@@ -11,8 +11,6 @@
 #include "GBMUtils.h"
 #include "windowing/Resolution.h"
 
-#include "platform/posix/utils/FileHandle.h"
-
 #include <map>
 #include <vector>
 
@@ -51,7 +49,11 @@ struct plane : drm_object
   void SetFormat(uint32_t newFormat) { format = newFormat; }
   uint32_t GetFormat() { return format; }
 
+  bool SupportsFormatAndModifier(uint32_t format, uint64_t modifier);
+
 private:
+  bool SupportsFormat(uint32_t format);
+
   uint32_t format{DRM_FORMAT_XRGB8888};
 };
 
@@ -88,7 +90,6 @@ public:
   virtual bool InitDrm();
   virtual void DestroyDrm();
 
-  std::string GetModule() const { return m_module; }
   int GetFileDescriptor() const { return m_fd; }
   int GetRenderNodeFileDescriptor() const { return m_renderFd; }
   struct plane* GetVideoPlane() const { return m_video_plane; }
@@ -109,6 +110,7 @@ public:
 
   static uint32_t FourCCWithAlpha(uint32_t fourcc);
   static uint32_t FourCCWithoutAlpha(uint32_t fourcc);
+  static std::string FourCCToString(uint32_t fourcc);
 
 protected:
   bool OpenDrm(bool needConnector);
@@ -117,7 +119,7 @@ protected:
   static bool GetProperties(int fd, uint32_t id, uint32_t type, struct drm_object *object);
   static void FreeProperties(struct drm_object *object);
 
-  KODI::UTILS::POSIX::CFileHandle m_fd;
+  int m_fd;
   struct connector *m_connector = nullptr;
   struct encoder *m_encoder = nullptr;
   struct crtc *m_crtc = nullptr;
@@ -144,9 +146,9 @@ private:
   static void DrmFbDestroyCallback(struct gbm_bo *bo, void *data);
   RESOLUTION_INFO GetResolutionInfo(drmModeModeInfoPtr mode);
   bool CheckConnector(int connectorId);
+  void PrintDrmDeviceInfo(drmDevicePtr device);
 
-  KODI::UTILS::POSIX::CFileHandle m_renderFd;
-  std::string m_module;
+  int m_renderFd;
 
   drmModeResPtr m_drm_resources = nullptr;
 

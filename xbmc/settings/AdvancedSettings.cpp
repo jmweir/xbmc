@@ -184,7 +184,7 @@ void CAdvancedSettings::Initialize()
   m_videoCleanDateTimeRegExp = "(.*[^ _\\,\\.\\(\\)\\[\\]\\-])[ _\\.\\(\\)\\[\\]\\-]+(19[0-9][0-9]|20[0-9][0-9])([ _\\,\\.\\(\\)\\[\\]\\-]|[^0-9]$)?";
 
   m_videoCleanStringRegExps.clear();
-  m_videoCleanStringRegExps.emplace_back("[ _\\,\\.\\(\\)\\[\\]\\-](ac3|dts|custom|dc|remastered|divx|divx5|dsr|dsrip|dutch|dvd|dvd5|dvd9|dvdrip|dvdscr|dvdscreener|screener|dvdivx|cam|fragment|fs|hdtv|hdrip|hdtvrip|internal|limited|multisubs|ntsc|ogg|ogm|pal|pdtv|proper|repack|rerip|retail|r3|r5|bd5|se|svcd|swedish|german|read.nfo|nfofix|unrated|extended|ws|telesync|ts|telecine|tc|brrip|bdrip|480p|480i|576p|576i|720p|720i|1080p|1080i|3d|hrhd|hrhdtv|hddvd|bluray|x264|h264|xvid|xvidvd|xxx|www.www|cd[1-9]|\\[.*\\])([ _\\,\\.\\(\\)\\[\\]\\-]|$)");
+  m_videoCleanStringRegExps.emplace_back("[ _\\,\\.\\(\\)\\[\\]\\-](aka|ac3|dts|custom|dc|remastered|divx|divx5|dsr|dsrip|dutch|dvd|dvd5|dvd9|dvdrip|dvdscr|dvdscreener|screener|dvdivx|cam|fragment|fs|hdtv|hdrip|hdtvrip|internal|limited|multisubs|ntsc|ogg|ogm|pal|pdtv|proper|repack|rerip|retail|r3|r5|bd5|se|svcd|swedish|german|read.nfo|nfofix|unrated|extended|ws|telesync|ts|telecine|tc|brrip|bdrip|480p|480i|576p|576i|720p|720i|1080p|1080i|3d|hrhd|hrhdtv|hddvd|bluray|x264|h264|xvid|xvidvd|xxx|www.www|cd[1-9]|\\[.*\\])([ _\\,\\.\\(\\)\\[\\]\\-]|$)");
   m_videoCleanStringRegExps.emplace_back("(\\[.*\\])");
 
   // this vector will be inserted at the end to
@@ -264,6 +264,8 @@ void CAdvancedSettings::Initialize()
   m_bHTTPDirectoryStatFilesize = false;
 
   m_bFTPThumbs = false;
+
+  m_bShoutcastArt = true;
 
   m_musicThumbs = "folder.jpg|Folder.jpg|folder.JPG|Folder.JPG|cover.jpg|Cover.jpg|cover.jpeg|thumb.jpg|Thumb.jpg|thumb.JPG|Thumb.JPG";
   m_fanartImages = "fanart.jpg|fanart.png";
@@ -410,9 +412,6 @@ void CAdvancedSettings::Initialize()
   m_stereoscopicregex_3d = "[-. _]3d[-. _]";
   m_stereoscopicregex_sbs = "[-. _]h?sbs[-. _]";
   m_stereoscopicregex_tab = "[-. _]h?tab[-. _]";
-
-  m_allowUseSeparateDeviceForDecoding = false;
-  m_disableDXVAdiscreteDecoding = false;
 
   m_videoAssFixedWorks = false;
 
@@ -695,9 +694,6 @@ void CAdvancedSettings::ParseSettingsFile(const std::string &file)
     }
 
     m_DXVACheckCompatibilityPresent = XMLUtils::GetBoolean(pElement,"checkdxvacompatibility", m_DXVACheckCompatibility);
-
-    XMLUtils::GetBoolean(pElement, "allowdiscretedecoder", m_allowUseSeparateDeviceForDecoding);
-    XMLUtils::GetBoolean(pElement, "disableDXVAdiscretedecoder", m_disableDXVAdiscreteDecoding);
 
     //0 = disable fps detect, 1 = only detect on timestamps with uniform spacing, 2 detect on all timestamps
     XMLUtils::GetInt(pElement, "fpsdetect", m_videoFpsDetect, 0, 2);
@@ -1044,6 +1040,9 @@ void CAdvancedSettings::ParseSettingsFile(const std::string &file)
   if (pThumbs)
     GetCustomExtensions(pThumbs,m_musicThumbs);
 
+  // show art for shoutcast v2 streams (set to false for devices with limited storage)
+  XMLUtils::GetBoolean(pRootElement, "shoutcastart", m_bShoutcastArt);
+
   // movie fanarts
   TiXmlElement* pFanart = pRootElement->FirstChildElement("fanart");
   if (pFanart)
@@ -1193,6 +1192,9 @@ void CAdvancedSettings::ParseSettingsFile(const std::string &file)
 
   // load in the settings overrides
   CServiceBroker::GetSettingsComponent()->GetSettings()->LoadHidden(pRootElement);
+
+  // Migration of old style art options from advanced setting to GUI setting
+  MigrateOldArtSettings();
 }
 
 void CAdvancedSettings::Clear()
@@ -1377,5 +1379,65 @@ void CAdvancedSettings::SetExtraArtwork(const TiXmlElement* arttypes, std::vecto
     if (arttype->FirstChild())
       artworkMap.push_back(arttype->FirstChild()->ValueStr());
     arttype = arttype->NextSibling("arttype");
+  }
+}
+
+void ConvertToWhitelist(const std::vector<std::string>& oldlist, std::vector<CVariant>& whitelist)
+{
+  for (auto& it : oldlist)
+  {
+    size_t last_index = it.find_last_not_of("0123456789");
+    std::string strFamilyType = it.substr(0, last_index + 1); // "fanart" of "fanart16"
+    if (std::find(whitelist.begin(), whitelist.end(), strFamilyType) == whitelist.end())
+      whitelist.emplace_back(strFamilyType);
+  }
+}
+
+void CAdvancedSettings::MigrateOldArtSettings()
+{
+  const std::shared_ptr<CSettings> settings = CServiceBroker::GetSettingsComponent()->GetSettings();
+  if (!settings->GetBool(CSettings::SETTING_MUSICLIBRARY_ARTSETTINGS_UPDATED))
+  {
+    CLog::Log(LOGINFO, "Migrating old music library artwork settings to new GUI settings");
+    // Convert numeric art type variants into simple art type family entry
+    // e.g. {"banner", "fanart1", "fanart2", "fanart3"... } into { "banner", "fanart"}
+    if (!m_musicArtistExtraArt.empty())
+    {
+      std::vector<CVariant> whitelist;
+      ConvertToWhitelist(m_musicArtistExtraArt, whitelist);
+      settings->SetList(CSettings::SETTING_MUSICLIBRARY_ARTISTART_WHITELIST, whitelist);
+    }
+    if (!m_musicAlbumExtraArt.empty())
+    {
+      std::vector<CVariant> whitelist;
+      ConvertToWhitelist(m_musicAlbumExtraArt, whitelist);
+      settings->SetList(CSettings::SETTING_MUSICLIBRARY_ALBUMART_WHITELIST, whitelist);
+    }
+
+    // Convert value like "folder.jpg|Folder.jpg|folder.JPG|Folder.JPG|cover.jpg|Cover.jpg|
+    // cover.jpeg|thumb.jpg|Thumb.jpg|thumb.JPG|Thumb.JPG" into case-insensitive unique elements
+    // e.g. {"folder.jpg", "cover.jpg", "cover.jpeg", "thumb.jpg"}
+    if (!m_musicThumbs.empty())
+    {
+      std::vector<std::string> thumbs1 = StringUtils::Split(m_musicThumbs, "|");
+      std::vector<std::string> thumbs2;
+      for (auto& it : thumbs1)
+      {
+        StringUtils::ToLower(it);
+        if (std::find(thumbs2.begin(), thumbs2.end(), it) == thumbs2.end())
+          thumbs2.emplace_back(it);
+      }
+      std::vector<CVariant> thumbs;
+      for (const auto& it : thumbs2)
+        thumbs.emplace_back(it);
+      settings->SetList(CSettings::SETTING_MUSICLIBRARY_MUSICTHUMBS, thumbs);
+    }
+
+    // Whitelists configured, set artwork level to custom
+    if (!m_musicAlbumExtraArt.empty() || !m_musicArtistExtraArt.empty())
+      settings->SetInt(CSettings::SETTING_MUSICLIBRARY_ARTWORKLEVEL, 2);
+
+    // Flag migration of settings so not done again
+    settings->SetBool(CSettings::SETTING_MUSICLIBRARY_ARTSETTINGS_UPDATED, true);
   }
 }

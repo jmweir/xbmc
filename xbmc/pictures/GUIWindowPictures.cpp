@@ -18,7 +18,7 @@
 #include "ServiceBroker.h"
 #include "URL.h"
 #include "Util.h"
-#include "addons/GUIDialogAddonInfo.h"
+#include "addons/gui/GUIDialogAddonInfo.h"
 #include "dialogs/GUIDialogMediaSource.h"
 #include "dialogs/GUIDialogProgress.h"
 #include "guilib/GUIComponent.h"
@@ -320,7 +320,7 @@ bool CGUIWindowPictures::ShowPicture(int iItem, bool startSlideShow)
 
   pSlideShow->Reset();
   bool bShowVideos = CServiceBroker::GetSettingsComponent()->GetSettings()->GetBool(CSettings::SETTING_PICTURES_SHOWVIDEOS);
-  for (const auto pItem : *m_vecItems)
+  for (const auto& pItem : *m_vecItems)
   {
     if (!pItem->m_bIsFolder &&
         !(URIUtils::IsRAR(pItem->GetPath()) || URIUtils::IsZIP(pItem->GetPath())) &&

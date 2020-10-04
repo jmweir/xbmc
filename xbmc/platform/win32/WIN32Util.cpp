@@ -312,6 +312,20 @@ int CWIN32Util::GetDesktopColorDepth()
 #endif
 }
 
+size_t CWIN32Util::GetSystemMemorySize()
+{
+#ifdef TARGET_WINDOWS_STORE
+  MEMORYSTATUSEX statex = {};
+  statex.dwLength = sizeof(statex);
+  GlobalMemoryStatusEx(&statex);
+  return static_cast<size_t>(statex.ullTotalPhys / KB);
+#else
+  ULONGLONG ramSize = 0;
+  GetPhysicallyInstalledSystemMemory(&ramSize);
+  return static_cast<size_t>(ramSize);
+#endif
+}
+
 #ifdef TARGET_WINDOWS_DESKTOP
 std::string CWIN32Util::GetSpecialFolder(int csidl)
 {
@@ -957,7 +971,7 @@ extern "C" {
       const char * const *n2, int c)
   {
     int i;
-    unsigned int len;
+    size_t len;
 
     /* check full name - then abbreviated ones */
     for (; n1 != NULL; n1 = n2, n2 = NULL) {
@@ -1497,17 +1511,12 @@ HDR_STATUS CWIN32Util::GetWindowsHDRStatus()
     if (CServiceBroker::IsServiceManagerUp())
       CLog::LogF(LOGDEBUG, "Display is not HDR capable or cannot be detected");
   }
-  else if (advancedColorSupported && !advancedColorEnabled)
+  else
   {
-    status = HDR_STATUS::HDR_OFF;
+    status = advancedColorEnabled ? HDR_STATUS::HDR_ON : HDR_STATUS::HDR_OFF;
     if (CServiceBroker::IsServiceManagerUp())
-      CLog::LogF(LOGDEBUG, "Display HDR capable and current HDR status is OFF");
-  }
-  else if (advancedColorSupported && advancedColorEnabled)
-  {
-    status = HDR_STATUS::HDR_ON;
-    if (CServiceBroker::IsServiceManagerUp())
-      CLog::LogF(LOGDEBUG, "Display HDR capable and current HDR status is ON");
+      CLog::LogF(LOGDEBUG, "Display HDR capable and current HDR status is {}",
+                 advancedColorEnabled ? "ON" : "OFF");
   }
 
   return status;

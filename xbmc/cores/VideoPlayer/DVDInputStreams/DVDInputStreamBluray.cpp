@@ -132,7 +132,7 @@ bool CDVDInputStreamBluray::Open()
   if(m_player == nullptr)
     return false;
 
-  std::string strPath(m_item.GetPath());
+  std::string strPath(m_item.GetDynPath());
   std::string filename;
   std::string root;
 
@@ -865,7 +865,7 @@ void CDVDInputStreamBluray::OverlayCallbackARGB(const struct bd_argb_overlay_s *
   /* uncompress and draw bitmap */
   if (ov->argb && ov->cmd == BD_ARGB_OVERLAY_DRAW)
   {
-    SOverlay overlay(new CDVDOverlayImage(), std::ptr_fun(CDVDOverlay::Release));
+    SOverlay overlay(new CDVDOverlayImage(), [](CDVDOverlay* ov) { CDVDOverlay::Release(ov); });
 
     overlay->palette_colors = 0;
     overlay->palette        = nullptr;

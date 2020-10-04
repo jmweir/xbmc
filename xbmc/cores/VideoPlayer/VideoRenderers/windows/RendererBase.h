@@ -15,7 +15,7 @@
 
 #include <vector>
 
-#include <d3d11.h>
+#include <d3d11_4.h>
 #include <dxgi1_5.h>
 extern "C" {
 #include <libavutil/mastering_display_metadata.h>
@@ -137,7 +137,7 @@ protected:
   explicit CRendererBase(CVideoSettings& videoSettings);
 
   bool CreateIntermediateTarget(unsigned int width, unsigned int height, bool dynamic = false);
-  void OnCMSConfigChanged(unsigned flags);
+  void OnCMSConfigChanged(AVColorPrimaries srcPrimaries);
   void ReorderDrawPoints(const CRect& destRect, CPoint(&rotatedPoints)[4]) const;
   bool CreateRenderBuffer(int index);
   void DeleteRenderBuffer(int index);

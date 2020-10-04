@@ -227,6 +227,7 @@ class CAdvancedSettings : public ISettingCallback, public ISettingsHandler
     bool m_bHTTPDirectoryStatFilesize;
 
     bool m_bFTPThumbs;
+    bool m_bShoutcastArt;
 
     std::string m_musicThumbs;
     std::string m_fanartImages;
@@ -355,9 +356,6 @@ class CAdvancedSettings : public ISettingCallback, public ISettingsHandler
     std::string m_stereoscopicregex_sbs;
     std::string m_stereoscopicregex_tab;
 
-    bool m_allowUseSeparateDeviceForDecoding;
-    bool m_disableDXVAdiscreteDecoding;
-
     /*!< @brief position behavior of ass subtitles when setting "subtitle position on screen" set to "fixed"
     True to show at the fixed position set in video calibration
     False to show at the bottom of video (default) */
@@ -372,4 +370,5 @@ class CAdvancedSettings : public ISettingCallback, public ISettingsHandler
     void Initialize();
     void Clear();
     void SetExtraArtwork(const TiXmlElement* arttypes, std::vector<std::string>& artworkMap);
+    void MigrateOldArtSettings();
 };

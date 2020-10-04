@@ -11,7 +11,7 @@
 #include "ContextMenuManager.h"
 #include "FileItem.h"
 #include "ServiceBroker.h"
-#include "addons/GUIDialogAddonInfo.h"
+#include "addons/gui/GUIDialogAddonInfo.h"
 #include "favourites/FavouritesService.h"
 #include "filesystem/Directory.h"
 #include "guilib/GUIComponent.h"
@@ -289,7 +289,8 @@ void CDirectoryProvider::OnAddonEvent(const ADDON::AddonEvent& event)
         typeid(event) == typeid(ADDON::AddonEvents::Disabled) ||
         typeid(event) == typeid(ADDON::AddonEvents::ReInstalled) ||
         typeid(event) == typeid(ADDON::AddonEvents::UnInstalled) ||
-        typeid(event) == typeid(ADDON::AddonEvents::MetadataChanged))
+        typeid(event) == typeid(ADDON::AddonEvents::MetadataChanged) ||
+        typeid(event) == typeid(ADDON::AddonEvents::AutoUpdateStateChanged))
       m_updateState = INVALIDATED;
   }
 }

@@ -56,7 +56,34 @@ bool CAddonsGUIInfo::GetLabel(std::string& value, const CFileItem *item, int con
         value = addonInfo->ChangeLog();
         return true;
       case LISTITEM_ADDON_BROKEN:
-        value = addonInfo->Broken();
+      {
+        // Fallback for old GUI info
+        if (addonInfo->LifecycleState() == ADDON::AddonLifecycleState::BROKEN)
+          value = addonInfo->LifecycleStateDescription();
+        else
+          value = "";
+        return true;
+      }
+      case LISTITEM_ADDON_LIFECYCLE_TYPE:
+      {
+        const ADDON::AddonLifecycleState state = addonInfo->LifecycleState();
+        switch (state)
+        {
+          case ADDON::AddonLifecycleState::BROKEN:
+            value = g_localizeStrings.Get(24171); // "Broken"
+            break;
+          case ADDON::AddonLifecycleState::DEPRECATED:
+            value = g_localizeStrings.Get(24170); // "Deprecated";
+            break;
+          case ADDON::AddonLifecycleState::NORMAL:
+          default:
+            value = g_localizeStrings.Get(24169); // "Normal";
+            break;
+        }
+        return true;
+      }
+      case LISTITEM_ADDON_LIFECYCLE_DESC:
+        value = addonInfo->LifecycleStateDescription();
         return true;
       case LISTITEM_ADDON_TYPE:
         value = ADDON::CAddonInfo::TranslateType(addonInfo->Type(), true);
@@ -91,7 +118,12 @@ bool CAddonsGUIInfo::GetLabel(std::string& value, const CFileItem *item, int con
           value = origin->Name();
           return true;
         }
-        value = g_localizeStrings.Get(13205);
+        else if (!item->GetAddonInfo()->Origin().empty())
+        {
+          value = item->GetAddonInfo()->Origin();
+          return true;
+        }
+        value = g_localizeStrings.Get(25014);
         return true;
       }
       case LISTITEM_ADDON_SIZE:
@@ -174,6 +206,14 @@ bool CAddonsGUIInfo::GetBool(bool& value, const CGUIListItem *gitem, int context
       ADDON::AddonPtr addon;
       if (CServiceBroker::GetAddonMgr().GetAddon(info.GetData3(), addon))
         value = !CServiceBroker::GetAddonMgr().IsAddonDisabled(info.GetData3());
+      return true;
+    }
+    case LISTITEM_ISAUTOUPDATEABLE:
+    {
+      value = true;
+      const CFileItem* item = static_cast<const CFileItem*>(gitem);
+      if (item->GetAddonInfo())
+        value = CServiceBroker::GetAddonMgr().IsAutoUpdateable(item->GetAddonInfo()->ID());
       return true;
     }
   }

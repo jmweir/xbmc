@@ -72,7 +72,7 @@ git clone https://github.com/xbmc/xbmc kodi
 ## 3. Install the required packages
 If you get a `package not found` type of message with the below command, remove the offending package(s) from the install list and reissue the command. Take a note of the missing dependencies and, after a successful step completion, **[build the missing dependencies manually](#31-build-missing-dependencies)**.
 
-**NOTE:** Kodi requires a compiler with C++14 support, i.e. gcc >= 4.9 or clang >= 3.4
+**NOTE:** Kodi requires a compiler with C++17 support, i.e. gcc >= 7 or clang >= 5
 
 Install build dependencies:
 ```
@@ -168,6 +168,7 @@ Build a specific group of add-ons:
 ```
 sudo gmake -j$(sysctl hw.ncpu | awk '{print $2}') -C tools/depends/target/binary-addons PREFIX=/usr/local ADDONS="pvr.*"
 ```
+For additional information on regular expression usage for ADDONS_TO_BUILD, view ADDONS_TO_BUILD section located at [Kodi add-ons CMake based buildsystem](../cmake/addons/README.md)
 
 **NOTE:** `PREFIX=/usr/local` should match Kodi's `-DCMAKE_INSTALL_PREFIX=` prefix used in **[section 4.1](#41-configure-build)**.
 

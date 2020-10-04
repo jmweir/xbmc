@@ -172,7 +172,7 @@ find_package(JsonSchemaBuilder REQUIRED)
 core_optional_dep(${optional_deps})
 core_require_dep(${required_deps})
 
-SET(PYTHON_VERSION 3.7)
+SET(PYTHON_VERSION 3.8)
 
 if(ENABLE_MARIADBCLIENT AND NOT ENABLE_MARIADBCLIENT STREQUAL AUTO AND ENABLE_MYSQLCLIENT AND NOT ENABLE_MYSQLCLIENT STREQUAL AUTO)
   MESSAGE(FATAL_ERROR "You can not use MySql and MariaDB at the same time. Disable one by adding -DENABLE_MYSQLCLIENT=OFF or -DENABLE_MARIADBCLIENT=OFF.")
@@ -235,7 +235,7 @@ add_custom_command(OUTPUT ${CORE_BUILD_DIR}/xbmc/CompileInfo.cpp
 list(APPEND install_data ${ADDON_INSTALL_DATA})
 add_library(compileinfo OBJECT ${CORE_BUILD_DIR}/xbmc/CompileInfo.cpp)
 set_target_properties(compileinfo PROPERTIES FOLDER "Build Utilities")
-target_compile_options(compileinfo PRIVATE "${SYSTEM_DEFINES}")
+target_compile_options(compileinfo PRIVATE "${SYSTEM_DEFINES} ${ARCH_DEFINES}")
 
 # RC File
 if(WIN32)
