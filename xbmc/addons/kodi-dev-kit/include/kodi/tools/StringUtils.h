@@ -10,6 +10,10 @@
 
 #ifdef __cplusplus
 
+#if !defined(NOMINMAX)
+#define NOMINMAX
+#endif
+
 #include <algorithm>
 #include <array>
 #include <cassert>
@@ -796,7 +800,7 @@ public:
           char* end;
           unsigned long num = strtol(cur, &end, 10);
           cur = end - 1;
-          out.push_back(num);
+          out.push_back(static_cast<char>(num));
           continue;
         }
       }
@@ -2372,13 +2376,13 @@ public:
   /// EXPECT_EQ(ref, var);
   /// ~~~~~~~~~~~~~
   ///
-  inline static int FindEndBracket(const std::string& str,
-                                   char opener,
-                                   char closer,
-                                   int startPos = 0)
+  inline static size_t FindEndBracket(const std::string& str,
+                                      char opener,
+                                      char closer,
+                                      size_t startPos = 0)
   {
-    int blocks = 1;
-    for (unsigned int i = startPos; i < str.size(); i++)
+    size_t blocks = 1;
+    for (size_t i = startPos; i < str.size(); i++)
     {
       if (str[i] == opener)
         blocks++;
@@ -2390,7 +2394,7 @@ public:
       }
     }
 
-    return static_cast<int>(std::string::npos);
+    return std::string::npos;
   }
   //----------------------------------------------------------------------------
 
@@ -2534,7 +2538,7 @@ public:
   ///
   inline static std::vector<std::string> Split(const std::string& input,
                                                const char delimiter,
-                                               size_t iMaxStrings = 0)
+                                               int iMaxStrings = 0)
   {
     std::vector<std::string> result;
     SplitTo(std::back_inserter(result), input, delimiter, iMaxStrings);
@@ -2630,7 +2634,7 @@ public:
   inline static OutputIt SplitTo(OutputIt d_first,
                                  const std::string& input,
                                  const char delimiter,
-                                 size_t iMaxStrings = 0)
+                                 int iMaxStrings = 0)
   {
     return SplitTo(d_first, input, std::string(1, delimiter), iMaxStrings);
   }
@@ -2720,7 +2724,7 @@ public:
 
     // Control the number of strings input is split into, keeping the original strings.
     // Note iMaxStrings > input.size()
-    int iNew = iMaxStrings - results.size();
+    size_t iNew = iMaxStrings - results.size();
     for (size_t di = 0; di < delimiters.size(); di++)
     {
       for (size_t i = 0; i < results.size(); i++)
@@ -2728,7 +2732,7 @@ public:
         if (iNew > 0)
         {
           std::vector<std::string> substrings =
-              StringUtils::Split(results[i], delimiters[di], iNew + 1);
+              StringUtils::Split(results[i], delimiters[di], static_cast<int>(iNew + 1));
           iNew = iNew - substrings.size() + 1;
           for (size_t j = 0; j < substrings.size(); j++)
             strings1.push_back(substrings[j]);

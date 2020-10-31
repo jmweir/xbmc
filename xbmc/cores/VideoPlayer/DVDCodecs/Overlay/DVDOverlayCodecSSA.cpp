@@ -12,8 +12,8 @@
 #include "DVDOverlaySSA.h"
 #include "DVDStreamInfo.h"
 #include "Util.h"
-#include "cores/VideoPlayer/Interface/Addon/DemuxPacket.h"
-#include "cores/VideoPlayer/Interface/Addon/TimingConstants.h"
+#include "cores/VideoPlayer/Interface/DemuxPacket.h"
+#include "cores/VideoPlayer/Interface/TimingConstants.h"
 #include "utils/StringUtils.h"
 
 #include <memory>
@@ -89,9 +89,9 @@ int CDVDOverlayCodecSSA::Decode(DemuxPacket *pPacket)
       end = 10000 * ((eh*360000.0)+(em*6000.0)+(es*100.0)+ec);
       beg = 10000 * ((sh*360000.0)+(sm*6000.0)+(ss*100.0)+sc);
 
-      pos = line.find_first_of(",", 0);
-      pos = line.find_first_of(",", pos+1);
-      pos = line.find_first_of(",", pos+1);
+      pos = line.find_first_of(',', 0);
+      pos = line.find_first_of(',', pos + 1);
+      pos = line.find_first_of(',', pos + 1);
       if(pos == std::string::npos)
         continue;
 

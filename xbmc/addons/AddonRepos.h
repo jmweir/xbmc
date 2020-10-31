@@ -21,6 +21,13 @@ class CAddonDatabase;
 class CAddonMgr;
 class CRepository;
 class IAddon;
+enum class AddonCheckType;
+
+enum class CheckAddonPath
+{
+  YES,
+  NO,
+};
 
 /**
  * Struct - CAddonWithUpdate
@@ -69,22 +76,17 @@ public:
 
   /*!
    * \brief Build the list of addons to be updated depending on defined rules
+   *        or the list of outdated addons
    * \param installed vector of all addons installed on the system that are
    *        checked for an update
-   * \param[out] updates list of addon versions that are going to be installed
+   * \param[in] addonCheckType build list of OUTDATED or UPDATES
+   * \param[out] result list of addon versions that are going to be installed
+   *             or are outdated
    */
-  void BuildUpdateList(const std::vector<std::shared_ptr<IAddon>>& installed,
-                       std::vector<std::shared_ptr<IAddon>>& updates) const;
+  void BuildUpdateOrOutdatedList(const std::vector<std::shared_ptr<IAddon>>& installed,
+                                 std::vector<std::shared_ptr<IAddon>>& result,
+                                 AddonCheckType addonCheckType) const;
 
-  /*!
-   * \brief Build the list of addons that are outdated and have an update
-   *        available depending on defined rules
-   * \param installed vector of all addons installed on the system that are
-   *        checked for an update
-   * \param[out] outdated list of addon versions that have an update available
-   */
-  void BuildOutdatedList(const std::vector<std::shared_ptr<IAddon>>& installed,
-                         std::vector<std::shared_ptr<IAddon>>& outdated) const;
 
   /*!
    * \brief Build the list of outdated addons and their available updates.
@@ -97,21 +99,26 @@ public:
 
   /*!
    * \brief Checks if the origin-repository of a given addon is defined as official repo
-   *        but does not check the origin path (e.g. https://mirrors.kodi.tv ...)
+   *        and can also verify if the origin-path (e.g. https://mirrors.kodi.tv ...)
+   *        is matching
+   * \note if this function is called on locally installed add-ons, for instance when populating
+   *       'My add-ons', the local installation path is returned as origin.
+   *       thus parameter CheckAddonPath::NO needs to be passed in such cases
    * \param addon pointer to addon to be checked
-   * \return true if the repository id of a given addon is defined as official
-   */
-  static bool IsFromOfficialRepo(const std::shared_ptr<IAddon>& addon);
-
-  /*!
-   * \brief Checks if the origin-repository of a given addon is defined as official repo
-   *        and verify if the origin-path is also defined and matching
-   * \param addon pointer to addon to be checked
-   * \param bCheckAddonPath also check origin path
+   * \param checkAddonPath also check origin path
    * \return true if the repository id of a given addon is defined as official
    *         and the addons origin matches the defined official origin of the repo id
    */
-  static bool IsFromOfficialRepo(const std::shared_ptr<IAddon>& addon, bool bCheckAddonPath);
+  static bool IsFromOfficialRepo(const std::shared_ptr<IAddon>& addon,
+                                 CheckAddonPath checkAddonPath);
+
+  /*!
+   * \brief Checks if the passed in repository is defined as official repo
+   *        which includes ORIGIN_SYSTEM
+   * \param repoId repository id to check
+   * \return true if the repository id is defined as official, false otherwise
+   */
+  static bool IsOfficialRepo(const std::string& repoId);
 
   /*!
    * \brief Check if an update is available for a single addon
@@ -184,14 +191,6 @@ public:
   void BuildCompatibleVersionsList(std::vector<std::shared_ptr<IAddon>>& compatibleVersions) const;
 
 private:
-  /*!
-   * \brief Executor for BuildUpdateList() and BuildOutdatedList()
-   * \sa BuildUpdateList() BuildOutdatedList()
-   */
-  void BuildUpdateOrOutdatedList(const std::vector<std::shared_ptr<IAddon>>& installed,
-                                 std::vector<std::shared_ptr<IAddon>>& result,
-                                 bool returnOutdatedAddons) const;
-
   /*!
    * \brief Load the map of addons
    * \note this function should only by called from publicly exposed wrappers

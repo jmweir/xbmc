@@ -137,8 +137,8 @@ public:
   void SetRatings(RatingMap ratings);
   void SetVotes(int votes, const std::string& type = "");
   void SetUniqueIDs(std::map<std::string, std::string> uniqueIDs);
-  void SetPremiered(CDateTime premiered);
-  void SetPremieredFromDBDate(std::string premieredString);
+  void SetPremiered(const CDateTime& premiered);
+  void SetPremieredFromDBDate(const std::string& premieredString);
   void SetYear(int year);
   void SetArtist(std::vector<std::string> artist);
   void SetSet(std::string set);
@@ -255,6 +255,7 @@ public:
   std::vector<std::string> m_showLink;
   std::map<int, std::string> m_namedSeasons;
   int m_iTop250;
+  int m_year;
   int m_iSeason;
   int m_iEpisode;
   int m_iIdUniqueID;

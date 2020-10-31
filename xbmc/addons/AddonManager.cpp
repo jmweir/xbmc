@@ -211,16 +211,28 @@ bool CAddonMgr::ReloadSettings(const std::string &id)
 
 std::vector<std::shared_ptr<IAddon>> CAddonMgr::GetAvailableUpdates() const
 {
-  return GetAvailableUpdatesOrOutdatedAddons(false);
+  std::vector<std::shared_ptr<IAddon>> availableUpdates =
+      GetAvailableUpdatesOrOutdatedAddons(AddonCheckType::AVAILABLE_UPDATES);
+
+  std::lock_guard<std::mutex> lock(m_lastAvailableUpdatesCountMutex);
+  m_lastAvailableUpdatesCountAsString = std::to_string(availableUpdates.size());
+
+  return availableUpdates;
 }
+
+const std::string& CAddonMgr::GetLastAvailableUpdatesCountAsString() const
+{
+  std::lock_guard<std::mutex> lock(m_lastAvailableUpdatesCountMutex);
+  return m_lastAvailableUpdatesCountAsString;
+};
 
 std::vector<std::shared_ptr<IAddon>> CAddonMgr::GetOutdatedAddons() const
 {
-  return GetAvailableUpdatesOrOutdatedAddons(true);
+  return GetAvailableUpdatesOrOutdatedAddons(AddonCheckType::OUTDATED_ADDONS);
 }
 
 std::vector<std::shared_ptr<IAddon>> CAddonMgr::GetAvailableUpdatesOrOutdatedAddons(
-    bool returnOutdatedAddons) const
+    AddonCheckType addonCheckType) const
 {
   CSingleLock lock(m_critSection);
   auto start = XbmcThreads::SystemClockMillis();
@@ -233,14 +245,7 @@ std::vector<std::shared_ptr<IAddon>> CAddonMgr::GetAvailableUpdatesOrOutdatedAdd
 
   GetAddonsForUpdate(installed);
 
-  if (returnOutdatedAddons)
-  {
-    addonRepos.BuildOutdatedList(installed, result);
-  }
-  else
-  {
-    addonRepos.BuildUpdateList(installed, result);
-  }
+  addonRepos.BuildUpdateOrOutdatedList(installed, result, addonCheckType);
 
   CLog::Log(LOGDEBUG, "CAddonMgr::GetAvailableUpdatesOrOutdatedAddons took %i ms",
             XbmcThreads::SystemClockMillis() - start);
@@ -378,16 +383,17 @@ bool CAddonMgr::FindInstallableById(const std::string& addonId, AddonPtr& result
 
   if (GetAddon(addonId, addonToUpdate, ADDON_UNKNOWN, false))
   {
-    return addonRepos.DoAddonUpdateCheck(addonToUpdate, result);
+    if (addonRepos.DoAddonUpdateCheck(addonToUpdate, result))
+      return true;
   }
 
   // get the latest version from all repos if the
-  // addon is not installed yet (e.g. for addon select dialog)
+  // addon is up-to-date or not installed yet
 
-  CLog::Log(
-      LOGDEBUG,
-      "CAddonMgr::{}: addon {} is not installed. falling back to get latest version from ALL repos",
-      __FUNCTION__, addonId);
+  CLog::Log(LOGDEBUG,
+            "CAddonMgr::{}: addon {} is up-to-date or not installed. falling back to get latest "
+            "version from all repos",
+            __FUNCTION__, addonId);
 
   return addonRepos.GetLatestAddonVersionFromAllRepos(addonId, result);
 }
@@ -538,7 +544,7 @@ void CAddonMgr::SortByDependencies(VECADDONS& updates) const
       // add to the end of sorted list of addons
       if (addToSortedList)
       {
-        sorted.emplace_back(std::move(addon));
+        sorted.emplace_back(addon);
         it = updates.erase(it);
       }
       else
@@ -590,9 +596,11 @@ bool CAddonMgr::HasType(const std::string &id, const TYPE &type)
   return GetAddon(id, addon, type, false);
 }
 
-bool CAddonMgr::FindAddon(const std::string& addonId, const AddonVersion& addonVersion)
+bool CAddonMgr::FindAddon(const std::string& addonId,
+                          const std::string& origin,
+                          const AddonVersion& addonVersion)
 {
-  ADDON_INFO_LIST installedAddons;
+  std::map<std::string, std::shared_ptr<CAddonInfo>> installedAddons;
 
   FindAddons(installedAddons, "special://xbmcbin/addons");
   FindAddons(installedAddons, "special://xbmc/addons");
@@ -609,6 +617,7 @@ bool CAddonMgr::FindAddon(const std::string& addonId, const AddonVersion& addonV
             addonVersion.asString());
 
   m_installedAddons[addonId] = it->second; // insert/replace entry
+  m_database.AddInstalledAddon(it->second, origin);
 
   // Reload caches
   std::map<std::string, AddonDisabledReason> tmpDisabled;
@@ -680,7 +689,9 @@ bool CAddonMgr::UnloadAddon(const std::string& addonId)
   return true;
 }
 
-bool CAddonMgr::LoadAddon(const std::string& addonId, const AddonVersion& addonVersion)
+bool CAddonMgr::LoadAddon(const std::string& addonId,
+                          const std::string& origin,
+                          const AddonVersion& addonVersion)
 {
   CSingleLock lock(m_critSection);
 
@@ -690,7 +701,7 @@ bool CAddonMgr::LoadAddon(const std::string& addonId, const AddonVersion& addonV
     return true;
   }
 
-  if (!FindAddon(addonId, addonVersion))
+  if (!FindAddon(addonId, origin, addonVersion))
   {
     CLog::Log(LOGERROR, "CAddonMgr: could not reload add-on %s. FindAddon failed.", addonId.c_str());
     return false;
@@ -878,13 +889,42 @@ bool CAddonMgr::IsAddonInstalled(const std::string& ID)
   return GetAddon(ID, tmp, ADDON_UNKNOWN, false);
 }
 
+bool CAddonMgr::IsAddonInstalled(const std::string& ID, const std::string& origin) const
+{
+  AddonPtr tmp;
+
+  if (GetAddon(ID, tmp, ADDON_UNKNOWN, false) && tmp)
+  {
+    if (tmp->Origin() == ORIGIN_SYSTEM)
+    {
+      return CAddonRepos::IsOfficialRepo(origin);
+    }
+    else
+    {
+      return tmp->Origin() == origin;
+    }
+  }
+  return false;
+}
+
 bool CAddonMgr::IsAddonInstalled(const std::string& ID,
                                  const std::string& origin,
                                  const AddonVersion& version)
 {
   AddonPtr tmp;
-  return (GetAddon(ID, tmp, ADDON_UNKNOWN, false) && tmp && tmp->Origin() == origin &&
-          tmp->Version() == version);
+
+  if (GetAddon(ID, tmp, ADDON_UNKNOWN, false) && tmp)
+  {
+    if (tmp->Origin() == ORIGIN_SYSTEM)
+    {
+      return CAddonRepos::IsOfficialRepo(origin) && tmp->Version() == version;
+    }
+    else
+    {
+      return tmp->Origin() == origin && tmp->Version() == version;
+    }
+  }
+  return false;
 }
 
 bool CAddonMgr::CanAddonBeInstalled(const AddonPtr& addon)

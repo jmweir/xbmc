@@ -341,7 +341,7 @@ std::shared_ptr<CPVREpgInfoTag> CPVREpgDatabase::CreateEpgTag(
 {
   if (!pDS->eof())
   {
-    const std::shared_ptr<CPVREpgInfoTag> newTag(new CPVREpgInfoTag());
+    std::shared_ptr<CPVREpgInfoTag> newTag(new CPVREpgInfoTag());
 
     time_t iStartTime;
     iStartTime = static_cast<time_t>(m_pDS->fv("iStartTime").get_asInt());
@@ -711,7 +711,7 @@ std::shared_ptr<CPVREpgInfoTag> CPVREpgDatabase::GetEpgTagByUniqueBroadcastID(
   {
     try
     {
-      const std::shared_ptr<CPVREpgInfoTag> tag = CreateEpgTag(m_pDS);
+      std::shared_ptr<CPVREpgInfoTag> tag = CreateEpgTag(m_pDS);
       m_pDS->close();
       return tag;
     }
@@ -719,6 +719,32 @@ std::shared_ptr<CPVREpgInfoTag> CPVREpgDatabase::GetEpgTagByUniqueBroadcastID(
     {
       CLog::LogF(LOGERROR, "Could not load EPG tag with unique broadcast ID ({}) from the database",
                  iUniqueBroadcastId);
+    }
+  }
+
+  return {};
+}
+
+std::shared_ptr<CPVREpgInfoTag> CPVREpgDatabase::GetEpgTagByDatabaseID(int iEpgID, int iDatabaseId)
+{
+  CSingleLock lock(m_critSection);
+  const std::string strQuery = PrepareSQL("SELECT * "
+                                          "FROM epgtags "
+                                          "WHERE idEpg = %u AND idBroadcast = %u;",
+                                          iEpgID, iDatabaseId);
+
+  if (ResultQuery(strQuery))
+  {
+    try
+    {
+      std::shared_ptr<CPVREpgInfoTag> tag = CreateEpgTag(m_pDS);
+      m_pDS->close();
+      return tag;
+    }
+    catch (...)
+    {
+      CLog::LogF(LOGERROR, "Could not load EPG tag with database ID (%u) from the database",
+                 iDatabaseId);
     }
   }
 
@@ -741,7 +767,7 @@ std::shared_ptr<CPVREpgInfoTag> CPVREpgDatabase::GetEpgTagByStartTime(int iEpgID
   {
     try
     {
-      const std::shared_ptr<CPVREpgInfoTag> tag = CreateEpgTag(m_pDS);
+      std::shared_ptr<CPVREpgInfoTag> tag = CreateEpgTag(m_pDS);
       m_pDS->close();
       return tag;
     }
@@ -772,7 +798,7 @@ std::shared_ptr<CPVREpgInfoTag> CPVREpgDatabase::GetEpgTagByMinStartTime(
   {
     try
     {
-      const std::shared_ptr<CPVREpgInfoTag> tag = CreateEpgTag(m_pDS);
+      std::shared_ptr<CPVREpgInfoTag> tag = CreateEpgTag(m_pDS);
       m_pDS->close();
       return tag;
     }
@@ -803,7 +829,7 @@ std::shared_ptr<CPVREpgInfoTag> CPVREpgDatabase::GetEpgTagByMaxEndTime(int iEpgI
   {
     try
     {
-      const std::shared_ptr<CPVREpgInfoTag> tag = CreateEpgTag(m_pDS);
+      std::shared_ptr<CPVREpgInfoTag> tag = CreateEpgTag(m_pDS);
       m_pDS->close();
       return tag;
     }

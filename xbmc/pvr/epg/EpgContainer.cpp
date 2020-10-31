@@ -518,14 +518,22 @@ std::shared_ptr<CPVREpgInfoTag> CPVREpgContainer::GetTagById(const std::shared_p
   {
     retval = epg->GetTagByBroadcastId(iBroadcastId);
   }
-  else
+
+  return retval;
+}
+
+std::shared_ptr<CPVREpgInfoTag> CPVREpgContainer::GetTagByDatabaseId(int iDatabaseId) const
+{
+  std::shared_ptr<CPVREpgInfoTag> retval;
+
+  if (iDatabaseId <= 0)
+    return retval;
+
+  for (const auto& epgEntry : m_epgIdToEpgMap)
   {
-    for (const auto& epgEntry : m_epgIdToEpgMap)
-    {
-      retval = epgEntry.second->GetTagByBroadcastId(iBroadcastId);
-      if (retval)
-        break;
-    }
+    retval = epgEntry.second->GetTagByDatabaseId(iDatabaseId);
+    if (retval)
+      break;
   }
 
   return retval;
@@ -538,7 +546,7 @@ std::vector<std::shared_ptr<CPVREpgInfoTag>> CPVREpgContainer::GetTags(
   PersistAll(XbmcThreads::EndTime::InfiniteValue);
 
   const std::shared_ptr<CPVREpgDatabase> database = GetEpgDatabase();
-  const std::vector<std::shared_ptr<CPVREpgInfoTag>> results = database->GetEpgTags(searchData);
+  std::vector<std::shared_ptr<CPVREpgInfoTag>> results = database->GetEpgTags(searchData);
 
   for (const auto& tag : results)
   {

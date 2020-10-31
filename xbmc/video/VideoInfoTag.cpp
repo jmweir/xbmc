@@ -57,6 +57,7 @@ void CVideoInfoTag::Reset()
   m_artist.clear();
   m_strTrailer.clear();
   m_iTop250 = 0;
+  m_year = -1;
   m_iSeason = -1;
   m_iEpisode = -1;
   m_iIdUniqueID = -1;
@@ -592,7 +593,7 @@ void CVideoInfoTag::Serialize(CVariant& value) const
   value["playcount"] = GetPlayCount();
   value["lastplayed"] = m_lastPlayed.IsValid() ? m_lastPlayed.GetAsDBDateTime() : StringUtils::Empty;
   value["top250"] = m_iTop250;
-  value["year"] = m_premiered.GetYear();
+  value["year"] = GetYear();
   value["season"] = m_iSeason;
   value["episode"] = m_iEpisode;
   for (const auto& i : m_uniqueIDs)
@@ -680,7 +681,7 @@ void CVideoInfoTag::ToSortable(SortItem& sortable, Field field) const
   case FieldPlaycount:                sortable[FieldPlaycount] = GetPlayCount(); break;
   case FieldLastPlayed:               sortable[FieldLastPlayed] = m_lastPlayed.IsValid() ? m_lastPlayed.GetAsDBDateTime() : StringUtils::Empty; break;
   case FieldTop250:                   sortable[FieldTop250] = m_iTop250; break;
-  case FieldYear:                     sortable[FieldYear] = m_premiered.GetYear(); break;
+  case FieldYear:                     sortable[FieldYear] = GetYear(); break;
   case FieldSeason:                   sortable[FieldSeason] = m_iSeason; break;
   case FieldEpisodeNumber:            sortable[FieldEpisodeNumber] = m_iEpisode; break;
   case FieldNumberOfEpisodes:         sortable[FieldNumberOfEpisodes] = m_iEpisode; break;
@@ -731,11 +732,13 @@ const std::string& CVideoInfoTag::GetDefaultRating() const
 
 bool CVideoInfoTag::HasYear() const
 {
-  return m_firstAired.IsValid() || m_premiered.IsValid();
+  return m_year > 0 || m_firstAired.IsValid() || m_premiered.IsValid();
 }
 
 int CVideoInfoTag::GetYear() const
 {
+  if (m_year > 0)
+    return m_year;
   if (m_firstAired.IsValid())
     return GetFirstAired().GetYear();
   if (m_premiered.IsValid())
@@ -1387,16 +1390,16 @@ void CVideoInfoTag::SetVotes(int votes, const std::string& type /* = "" */)
     m_ratings[type].votes = votes;
 }
 
-void CVideoInfoTag::SetPremiered(CDateTime premiered)
+void CVideoInfoTag::SetPremiered(const CDateTime& premiered)
 {
-  m_premiered = std::move(premiered);
+  m_premiered = premiered;
   m_bHasPremiered = premiered.IsValid();
 }
 
-void CVideoInfoTag::SetPremieredFromDBDate(std::string premieredString)
+void CVideoInfoTag::SetPremieredFromDBDate(const std::string& premieredString)
 {
   CDateTime premiered;
-  premiered.SetFromDBDate(std::move(premieredString));
+  premiered.SetFromDBDate(premieredString);
   SetPremiered(premiered);
 }
 
@@ -1405,10 +1408,7 @@ void CVideoInfoTag::SetYear(int year)
   if (year <= 0)
     return;
 
-  if (m_bHasPremiered)
-    m_premiered.SetDate(year, m_premiered.GetMonth(), m_premiered.GetDay());
-  else
-    m_premiered = CDateTime(year, 1, 1, 0, 0, 0);
+  m_year = year;
 }
 
 void CVideoInfoTag::SetArtist(std::vector<std::string> artist)

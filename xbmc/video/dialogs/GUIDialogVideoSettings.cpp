@@ -64,7 +64,7 @@ CGUIDialogVideoSettings::CGUIDialogVideoSettings()
 
 CGUIDialogVideoSettings::~CGUIDialogVideoSettings() = default;
 
-void CGUIDialogVideoSettings::OnSettingChanged(std::shared_ptr<const CSetting> setting)
+void CGUIDialogVideoSettings::OnSettingChanged(const std::shared_ptr<const CSetting>& setting)
 {
   if (setting == NULL)
     return;
@@ -201,7 +201,7 @@ void CGUIDialogVideoSettings::OnSettingChanged(std::shared_ptr<const CSetting> s
   }
 }
 
-void CGUIDialogVideoSettings::OnSettingAction(std::shared_ptr<const CSetting> setting)
+void CGUIDialogVideoSettings::OnSettingAction(const std::shared_ptr<const CSetting>& setting)
 {
   if (setting == NULL)
     return;
@@ -344,7 +344,11 @@ void CGUIDialogVideoSettings::InitializeSettings()
   entries.clear();
   entries.push_back(TranslatableIntegerSettingOption(16301, VS_SCALINGMETHOD_NEAREST));
   entries.push_back(TranslatableIntegerSettingOption(16302, VS_SCALINGMETHOD_LINEAR));
-  entries.push_back(TranslatableIntegerSettingOption(16303, VS_SCALINGMETHOD_CUBIC));
+  entries.push_back(TranslatableIntegerSettingOption(16303, VS_SCALINGMETHOD_CUBIC_B_SPLINE));
+  entries.push_back(TranslatableIntegerSettingOption(16314, VS_SCALINGMETHOD_CUBIC_MITCHELL));
+  entries.push_back(TranslatableIntegerSettingOption(16321, VS_SCALINGMETHOD_CUBIC_CATMULL));
+  entries.push_back(TranslatableIntegerSettingOption(16326, VS_SCALINGMETHOD_CUBIC_0_075));
+  entries.push_back(TranslatableIntegerSettingOption(16330, VS_SCALINGMETHOD_CUBIC_0_1));
   entries.push_back(TranslatableIntegerSettingOption(16304, VS_SCALINGMETHOD_LANCZOS2));
   entries.push_back(TranslatableIntegerSettingOption(16323, VS_SCALINGMETHOD_SPLINE36_FAST));
   entries.push_back(TranslatableIntegerSettingOption(16315, VS_SCALINGMETHOD_LANCZOS3_FAST));
@@ -422,7 +426,8 @@ void CGUIDialogVideoSettings::InitializeSettings()
   AddButton(groupSaveAsDefault, SETTING_VIDEO_CALIBRATION, 214, SettingLevel::Basic);
 }
 
-void CGUIDialogVideoSettings::AddVideoStreams(std::shared_ptr<CSettingGroup> group, const std::string &settingId)
+void CGUIDialogVideoSettings::AddVideoStreams(const std::shared_ptr<CSettingGroup>& group,
+                                              const std::string& settingId)
 {
   if (group == NULL || settingId.empty())
     return;
@@ -434,7 +439,11 @@ void CGUIDialogVideoSettings::AddVideoStreams(std::shared_ptr<CSettingGroup> gro
   AddList(group, settingId, 38031, SettingLevel::Basic, m_videoStream, VideoStreamsOptionFiller, 38031);
 }
 
-void CGUIDialogVideoSettings::VideoStreamsOptionFiller(std::shared_ptr<const CSetting> setting, std::vector<IntegerSettingOption> &list, int &current, void *data)
+void CGUIDialogVideoSettings::VideoStreamsOptionFiller(
+    const std::shared_ptr<const CSetting>& setting,
+    std::vector<IntegerSettingOption>& list,
+    int& current,
+    void* data)
 {
   int videoStreamCount = g_application.GetAppPlayer().GetVideoStreamCount();
 
@@ -483,7 +492,10 @@ void CGUIDialogVideoSettings::VideoStreamsOptionFiller(std::shared_ptr<const CSe
   }
 }
 
-void CGUIDialogVideoSettings::VideoOrientationFiller(std::shared_ptr<const CSetting> setting, std::vector<IntegerSettingOption> &list, int &current, void *data)
+void CGUIDialogVideoSettings::VideoOrientationFiller(const std::shared_ptr<const CSetting>& setting,
+                                                     std::vector<IntegerSettingOption>& list,
+                                                     int& current,
+                                                     void* data)
 {
   list.emplace_back(g_localizeStrings.Get(687), 0);
   list.emplace_back(g_localizeStrings.Get(35229), 90);

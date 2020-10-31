@@ -98,8 +98,6 @@ CLinuxRendererGL::CPictureBuffer::CPictureBuffer()
   loaded = false;
 }
 
-CLinuxRendererGL::CPictureBuffer::~CPictureBuffer() = default;
-
 CBaseRenderer* CLinuxRendererGL::Create(CVideoBuffer *buffer)
 {
   return new CLinuxRendererGL();
@@ -804,7 +802,11 @@ void CLinuxRendererGL::UpdateVideoFilter()
   case VS_SCALINGMETHOD_LANCZOS2:
   case VS_SCALINGMETHOD_SPLINE36:
   case VS_SCALINGMETHOD_LANCZOS3:
-  case VS_SCALINGMETHOD_CUBIC:
+  case VS_SCALINGMETHOD_CUBIC_B_SPLINE:
+  case VS_SCALINGMETHOD_CUBIC_MITCHELL:
+  case VS_SCALINGMETHOD_CUBIC_CATMULL:
+  case VS_SCALINGMETHOD_CUBIC_0_075:
+  case VS_SCALINGMETHOD_CUBIC_0_1:
     if (m_renderMethod & RENDER_GLSL)
     {
       if (!m_fbo.fbo.Initialize())
@@ -2578,7 +2580,11 @@ bool CLinuxRendererGL::Supports(ESCALINGMETHOD method)
       method == VS_SCALINGMETHOD_AUTO)
     return true;
 
-  if (method == VS_SCALINGMETHOD_CUBIC ||
+  if (method == VS_SCALINGMETHOD_CUBIC_B_SPLINE ||
+      method == VS_SCALINGMETHOD_CUBIC_MITCHELL ||
+      method == VS_SCALINGMETHOD_CUBIC_CATMULL ||
+      method == VS_SCALINGMETHOD_CUBIC_0_075 ||
+      method == VS_SCALINGMETHOD_CUBIC_0_1 ||
       method == VS_SCALINGMETHOD_LANCZOS2 ||
       method == VS_SCALINGMETHOD_SPLINE36_FAST ||
       method == VS_SCALINGMETHOD_LANCZOS3_FAST ||

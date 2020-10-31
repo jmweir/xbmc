@@ -284,7 +284,7 @@ bool CMediaSettings::Save(TiXmlNode *settings) const
   return true;
 }
 
-void CMediaSettings::OnSettingAction(std::shared_ptr<const CSetting> setting)
+void CMediaSettings::OnSettingAction(const std::shared_ptr<const CSetting>& setting)
 {
   if (setting == NULL)
     return;
@@ -343,13 +343,13 @@ void CMediaSettings::OnSettingAction(std::shared_ptr<const CSetting> setting)
   }
 }
 
-void CMediaSettings::OnSettingChanged(std::shared_ptr<const CSetting> setting)
+void CMediaSettings::OnSettingChanged(const std::shared_ptr<const CSetting>& setting)
 {
   if (setting == nullptr)
     return;
 
   if (setting->GetId() == CSettings::SETTING_VIDEOLIBRARY_SHOWUNWATCHEDPLOTS)
-    CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::VideoLibrary, "xbmc", "OnRefresh");
+    CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::VideoLibrary, "OnRefresh");
 }
 
 int CMediaSettings::GetWatchedMode(const std::string &content) const

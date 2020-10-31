@@ -34,6 +34,7 @@
 #include "settings/DisplaySettings.h"
 #include "settings/Settings.h"
 #include "settings/SettingsComponent.h"
+#include "settings/lib/Setting.h"
 #include "threads/SingleLock.h"
 #include "utils/ActorProtocol.h"
 #include "utils/MathUtils.h"
@@ -45,7 +46,6 @@
 #include "platform/freebsd/OptionalsReg.h"
 #include "platform/linux/OptionalsReg.h"
 #include "platform/linux/TimeUtils.h"
-#include "platform/linux/powermanagement/LinuxPowerSyscall.h"
 
 #include <algorithm>
 #include <limits>
@@ -177,7 +177,6 @@ CWinSystemWayland::CWinSystemWayland()
     }
   }
   m_winEvents.reset(new CWinEventsWayland());
-  CLinuxPowerSyscall::Register();
   m_lirc.reset(OPTIONALS::LircRegister());
 }
 
@@ -188,8 +187,14 @@ CWinSystemWayland::~CWinSystemWayland() noexcept
 
 bool CWinSystemWayland::InitWindowSystem()
 {
-  wayland::set_log_handler([](std::string message)
+  const char* env = getenv("WAYLAND_DISPLAY");
+  if (!env)
   {
+    CLog::Log(LOGDEBUG, "CWinSystemWayland::{} - WAYLAND_DISPLAY env not set", __FUNCTION__);
+    return false;
+  }
+
+  wayland::set_log_handler([](const std::string& message) {
     CLog::Log(LOGWARNING, "wayland-client log message: %s", message.c_str());
   });
 
@@ -233,6 +238,11 @@ bool CWinSystemWayland::InitWindowSystem()
   // Always use the generic touch action handler
   CGenericTouchInputHandler::GetInstance().RegisterHandler(&CGenericTouchActionHandler::GetInstance());
 
+  CServiceBroker::GetSettingsComponent()
+      ->GetSettings()
+      ->GetSetting(CSettings::SETTING_VIDEOSCREEN_LIMITEDRANGE)
+      ->SetVisible(true);
+
   return CWinSystemBase::InitWindowSystem();
 }
 
@@ -271,8 +281,7 @@ bool CWinSystemWayland::CreateNewWindow(const std::string& name,
   CLog::LogF(LOGINFO, "Starting %s size %dx%d", fullScreen ? "full screen" : "windowed", res.iWidth, res.iHeight);
 
   m_surface = m_compositor.create_surface();
-  m_surface.on_enter() = [this](wayland::output_t wloutput)
-  {
+  m_surface.on_enter() = [this](const wayland::output_t& wloutput) {
     if (auto output = FindOutputByWaylandOutput(wloutput))
     {
       CLog::Log(LOGDEBUG, "Entering output \"%s\" with scale %d and %.3f dpi", UserFriendlyOutputName(output).c_str(), output->GetScale(), output->GetCurrentDpi());
@@ -287,8 +296,7 @@ bool CWinSystemWayland::CreateNewWindow(const std::string& name,
       CLog::Log(LOGWARNING, "Entering output that was not configured yet, ignoring");
     }
   };
-  m_surface.on_leave() = [this](wayland::output_t wloutput)
-  {
+  m_surface.on_leave() = [this](const wayland::output_t& wloutput) {
     if (auto output = FindOutputByWaylandOutput(wloutput))
     {
       CLog::Log(LOGDEBUG, "Leaving output \"%s\" with scale %d", UserFriendlyOutputName(output).c_str(), output->GetScale());
@@ -1327,8 +1335,7 @@ void CWinSystemWayland::PrepareFramePresentation()
       iter = m_surfaceSubmissions.emplace(m_surfaceSubmissions.end(), tStart, feedback);
     }
 
-    feedback.on_sync_output() = [this](wayland::output_t wloutput)
-    {
+    feedback.on_sync_output() = [this](const wayland::output_t& wloutput) {
       m_syncOutputID = wloutput.get_id();
       auto output = FindOutputByWaylandOutput(wloutput);
       if (output)
@@ -1340,8 +1347,10 @@ void CWinSystemWayland::PrepareFramePresentation()
         CLog::Log(LOGWARNING, "Could not find Wayland output that is supposedly the sync output");
       }
     };
-    feedback.on_presented() = [this,iter](std::uint32_t tvSecHi, std::uint32_t tvSecLo, std::uint32_t tvNsec, std::uint32_t refresh, std::uint32_t seqHi, std::uint32_t seqLo, wayland::presentation_feedback_kind flags)
-    {
+    feedback.on_presented() = [this, iter](std::uint32_t tvSecHi, std::uint32_t tvSecLo,
+                                           std::uint32_t tvNsec, std::uint32_t refresh,
+                                           std::uint32_t seqHi, std::uint32_t seqLo,
+                                           const wayland::presentation_feedback_kind& flags) {
       timespec tv = { .tv_sec = static_cast<std::time_t> ((static_cast<std::uint64_t>(tvSecHi) << 32) + tvSecLo), .tv_nsec = static_cast<long>(tvNsec) };
       std::int64_t latency{KODI::LINUX::TimespecDifference(iter->submissionTime, tv)};
       std::uint64_t msc{(static_cast<std::uint64_t>(seqHi) << 32) + seqLo};
@@ -1445,7 +1454,8 @@ float CWinSystemWayland::GetSyncOutputRefreshRate()
   return m_syncOutputRefreshRate;
 }
 
-KODI::CSignalRegistration CWinSystemWayland::RegisterOnPresentationFeedback(PresentationFeedbackHandler handler)
+KODI::CSignalRegistration CWinSystemWayland::RegisterOnPresentationFeedback(
+    const PresentationFeedbackHandler& handler)
 {
   return m_presentationFeedbackHandlers.Register(handler);
 }

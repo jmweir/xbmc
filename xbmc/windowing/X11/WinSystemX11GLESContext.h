@@ -18,11 +18,21 @@
 
 class CGLContextEGL;
 
+namespace KODI
+{
+namespace WINDOWING
+{
+namespace X11
+{
+
 class CWinSystemX11GLESContext : public CWinSystemX11, public CRenderSystemGLES
 {
 public:
   CWinSystemX11GLESContext();
   virtual ~CWinSystemX11GLESContext();
+
+  static void Register();
+  static std::unique_ptr<CWinSystemBase> CreateWinSystem();
 
   // Implementation of CWinSystem via CWinSystemX11
   CRenderSystemBase* GetRenderSystem() override { return this; }
@@ -52,3 +62,7 @@ protected:
 
   std::unique_ptr<OPTIONALS::CLircContainer, OPTIONALS::delete_CLircContainer> m_lirc;
 };
+
+} // namespace X11
+} // namespace WINDOWING
+} // namespace KODI

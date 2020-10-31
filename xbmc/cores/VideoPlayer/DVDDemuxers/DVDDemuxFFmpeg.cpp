@@ -13,9 +13,10 @@
 #include "DVDInputStreams/DVDInputStreamFFmpeg.h"
 #include "ServiceBroker.h"
 #include "URL.h"
+#include "Util.h"
 #include "commons/Exception.h"
 #include "cores/FFmpeg.h"
-#include "cores/VideoPlayer/Interface/Addon/TimingConstants.h" // for DVD_TIME_BASE
+#include "cores/VideoPlayer/Interface/TimingConstants.h" // for DVD_TIME_BASE
 #include "filesystem/CurlFile.h"
 #include "filesystem/Directory.h"
 #include "filesystem/File.h"
@@ -28,7 +29,6 @@
 #include "utils/URIUtils.h"
 #include "utils/XTimeUtils.h"
 #include "utils/log.h"
-#include "Util.h"
 
 #include <sstream>
 #include <utility>
@@ -200,7 +200,7 @@ bool CDVDDemuxFFmpeg::Aborted()
   return false;
 }
 
-bool CDVDDemuxFFmpeg::Open(std::shared_ptr<CDVDInputStream> pInput, bool fileinfo)
+bool CDVDDemuxFFmpeg::Open(const std::shared_ptr<CDVDInputStream>& pInput, bool fileinfo)
 {
   AVInputFormat* iformat = NULL;
   std::string strFile;
@@ -273,7 +273,7 @@ bool CDVDDemuxFFmpeg::Open(std::shared_ptr<CDVDInputStream> pInput, bool fileinf
       if (found != std::string::npos)
       {
         size_t start = found + 3;
-        found = strURL.find("@");
+        found = strURL.find('@');
 
         if (found != std::string::npos && found > start)
         {

@@ -12,7 +12,7 @@
 #include "ServiceBroker.h"
 #include "cores/VideoPlayer/DVDCodecs/DVDCodecUtils.h"
 #include "cores/VideoPlayer/DVDCodecs/DVDFactoryCodec.h"
-#include "cores/VideoPlayer/Interface/Addon/TimingConstants.h"
+#include "cores/VideoPlayer/Interface/TimingConstants.h"
 #include "cores/VideoPlayer/Process/ProcessInfo.h"
 #include "settings/AdvancedSettings.h"
 #include "settings/Settings.h"
@@ -38,11 +38,11 @@ extern "C" {
 #include <libavfilter/buffersrc.h>
 }
 
+#include "system_egl.h"
+
+#include <EGL/eglext.h>
 #include <va/va_vpp.h>
 #include <xf86drm.h>
-
-#include <EGL/egl.h>
-#include <EGL/eglext.h>
 
 #if VA_CHECK_VERSION(1, 0, 0)
 # include <va/va_str.h>
@@ -62,12 +62,14 @@ const std::string SETTING_VIDEOPLAYER_PREFERVAAPIRENDER = "videoplayer.prefervaa
 
 void VAAPI::VaErrorCallback(void *user_context, const char *message)
 {
-  CLog::Log(LOGERROR, "libva error: {}", message);
+  std::string str{message};
+  CLog::Log(LOGERROR, "libva error: {}", StringUtils::TrimRight(str));
 }
 
 void VAAPI::VaInfoCallback(void *user_context, const char *message)
 {
-  CLog::Log(LOGDEBUG, "libva info: {}", message);
+  std::string str{message};
+  CLog::Log(LOGDEBUG, "libva info: {}", StringUtils::TrimRight(str));
 }
 
 //-----------------------------------------------------------------------------

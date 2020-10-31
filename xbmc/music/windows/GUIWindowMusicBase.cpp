@@ -57,6 +57,7 @@
 #include "utils/XTimeUtils.h"
 #include "utils/log.h"
 #include "video/dialogs/GUIDialogVideoInfo.h"
+#include "video/VideoInfoTag.h"
 #include "view/GUIViewState.h"
 
 #include <algorithm>
@@ -262,7 +263,7 @@ bool CGUIWindowMusicBase::OnAction(const CAction &action)
   return CGUIMediaWindow::OnAction(action);
 }
 
-void CGUIWindowMusicBase::OnItemInfoAll(const std::string strPath, bool refresh )
+void CGUIWindowMusicBase::OnItemInfoAll(const std::string& strPath, bool refresh)
 {
   if (StringUtils::EqualsNoCase(m_vecItems->GetContent(), "albums"))
     g_application.StartMusicAlbumScan(strPath, refresh);
@@ -277,8 +278,18 @@ void CGUIWindowMusicBase::OnItemInfo(int iItem)
 
   CFileItemPtr item = m_vecItems->Get(iItem);
 
-  if (item->IsVideo())
-  { // Music video on a mixed current playlist
+  // Match visibility test of CMusicInfo::IsVisible
+  if (item->IsVideoDb() && item->HasVideoInfoTag() &&
+      (item->HasProperty("artist_musicid") || item->HasProperty("album_musicid")))
+  {
+    // Music video artist or album (navigation by music > music video > artist))
+    CGUIDialogMusicInfo::ShowFor(item.get());
+    return;
+  }
+
+  if (item->IsVideo() && item->HasVideoInfoTag() &&
+      item->GetVideoInfoTag()->m_type == MediaTypeMusicVideo)
+  { // Music video on a mixed current playlist or navigation by music > music video > artist > video
     CGUIDialogVideoInfo::ShowFor(*item);
     return;
   }
@@ -853,6 +864,9 @@ bool CGUIWindowMusicBase::OnPlayMedia(int iItem, const std::string &player)
 /// \param items File items to fill
 void CGUIWindowMusicBase::OnRetrieveMusicInfo(CFileItemList& items)
 {
+  // No need to attempt to read music file tags for music videos
+  if (items.IsVideoDb())
+    return;
   if (items.GetFolderCount()==items.Size() || items.IsMusicDb() ||
      (!CServiceBroker::GetSettingsComponent()->GetSettings()->GetBool(CSettings::SETTING_MUSICFILES_USETAGS) && !items.IsCDDA()))
   {
@@ -994,7 +1008,7 @@ bool CGUIWindowMusicBase::GetDirectory(const std::string &strDirectory, CFileIte
 
 bool CGUIWindowMusicBase::CheckFilterAdvanced(CFileItemList &items) const
 {
-  std::string content = items.GetContent();
+  const std::string& content = items.GetContent();
   if ((items.IsMusicDb() || CanContainFilter(m_strFilterPath)) &&
       (StringUtils::EqualsNoCase(content, "artists") ||
        StringUtils::EqualsNoCase(content, "albums")  ||

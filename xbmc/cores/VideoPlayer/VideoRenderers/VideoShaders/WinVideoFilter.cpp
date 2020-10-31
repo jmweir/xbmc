@@ -221,13 +221,18 @@ void COutputShader::GetDefines(DefinesMap& map) const
   {
     map["KODI_TONE_MAPPING"] = "";
   }
+  if (m_useHLGtoPQ)
+  {
+    map["KODI_HLG_TO_PQ"] = "";
+  }
 }
 
-bool COutputShader::Create(bool useLUT, bool useDithering, int ditherDepth, bool toneMapping)
+bool COutputShader::Create(bool useLUT, bool useDithering, int ditherDepth, bool toneMapping, bool HLGtoPQ)
 {
   m_useLut = useLUT;
   m_ditherDepth = ditherDepth;
   m_toneMapping = toneMapping && !DX::Windowing()->IsHDROutput();
+  m_useHLGtoPQ = HLGtoPQ;
 
   CWinShader::CreateVertexBuffer(4, sizeof(Vertex));
 
@@ -699,7 +704,7 @@ bool CConvolutionShader1Pass::Create(ESCALINGMETHOD method, const std::shared_pt
   std::string effectString;
   switch(method)
   {
-    case VS_SCALINGMETHOD_CUBIC:
+    case VS_SCALINGMETHOD_CUBIC_MITCHELL:
     case VS_SCALINGMETHOD_LANCZOS2:
     case VS_SCALINGMETHOD_SPLINE36_FAST:
     case VS_SCALINGMETHOD_LANCZOS3_FAST:
@@ -835,7 +840,7 @@ bool CConvolutionShaderSeparable::Create(ESCALINGMETHOD method, const std::share
   std::string effectString;
   switch(method)
   {
-    case VS_SCALINGMETHOD_CUBIC:
+    case VS_SCALINGMETHOD_CUBIC_MITCHELL:
     case VS_SCALINGMETHOD_LANCZOS2:
     case VS_SCALINGMETHOD_SPLINE36_FAST:
     case VS_SCALINGMETHOD_LANCZOS3_FAST:

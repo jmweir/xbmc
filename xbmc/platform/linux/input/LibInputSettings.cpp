@@ -39,6 +39,7 @@ CLibInputSettings::CLibInputSettings(CLibInputHandler *handler) :
   const std::shared_ptr<CSettings> settings = CServiceBroker::GetSettingsComponent()->GetSettings();
   settings->GetSettingsManager()->RegisterCallback(this, settingSet);
   settings->GetSettingsManager()->RegisterSettingOptionsFiller("libinputkeyboardlayout", SettingOptionsKeyboardLayoutsFiller);
+  settings->GetSetting(SETTING_INPUT_LIBINPUTKEYBOARDLAYOUT)->SetVisible(true);
 
   /* load the keyboard layouts from xkeyboard-config */
   std::string xkbFile("/usr/share/X11/xkb/rules/base.xml");
@@ -120,12 +121,16 @@ CLibInputSettings::~CLibInputSettings()
   settings->GetSettingsManager()->UnregisterCallback(this);
 }
 
-void CLibInputSettings::SettingOptionsKeyboardLayoutsFiller(std::shared_ptr<const CSetting> setting, std::vector<StringSettingOption> &list, std::string &current, void *data)
+void CLibInputSettings::SettingOptionsKeyboardLayoutsFiller(
+    const std::shared_ptr<const CSetting>& setting,
+    std::vector<StringSettingOption>& list,
+    std::string& current,
+    void* data)
 {
   list = layouts;
 }
 
-void CLibInputSettings::OnSettingChanged(std::shared_ptr<const CSetting> setting)
+void CLibInputSettings::OnSettingChanged(const std::shared_ptr<const CSetting>& setting)
 {
   if (setting == nullptr)
     return;

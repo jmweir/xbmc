@@ -85,7 +85,7 @@ static void AnnounceRemove(const std::string& content, int id)
   data["id"] = id;
   if (g_application.IsMusicScanning())
     data["transaction"] = true;
-  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::AudioLibrary, "xbmc", "OnRemove", data);
+  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::AudioLibrary, "OnRemove", data);
 }
 
 static void AnnounceUpdate(const std::string& content, int id, bool added = false)
@@ -97,7 +97,7 @@ static void AnnounceUpdate(const std::string& content, int id, bool added = fals
     data["transaction"] = true;
   if (added)
     data["added"] = true;
-  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::AudioLibrary, "xbmc", "OnUpdate", data);
+  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::AudioLibrary, "OnUpdate", data);
 }
 
 CMusicDatabase::CMusicDatabase(void)
@@ -125,7 +125,7 @@ void CMusicDatabase::CreateTables()
               " strBorn text, strFormed text, strGenres text, strMoods text, "
               " strStyles text, strInstruments text, strBiography text, "
               " strDied text, strDisbanded text, strYearsActive text, "
-              " strImage text, strFanart text, "
+              " strImage text, "
               " lastScraped varchar(20) default NULL, "
               " bScrapedMBID INTEGER NOT NULL DEFAULT 0, "
               " idInfoSetting INTEGER NOT NULL DEFAULT 0, "
@@ -498,7 +498,7 @@ void CMusicDatabase::CreateViews()
               "  strBorn, strFormed, strGenres,"
               "  strMoods, strStyles, strInstruments, "
               "  strBiography, strDied, strDisbanded, "
-              "  strYearsActive, strImage, strFanart, "
+              "  strYearsActive, strImage, "
               "  bScrapedMBID, lastScraped, "
               "  dateAdded, dateNew, dateModified "
               "FROM artist");
@@ -688,7 +688,6 @@ bool CMusicDatabase::AddAlbum(CAlbum& album, int idSource)
                    std::distance(album.artistCredits.begin(), artistCredit));
   }
 
-  int albumDuration = 0;
   for (auto song = album.songs.begin(); song != album.songs.end(); ++song)
   {
     song->idAlbum = album.idAlbum;
@@ -730,8 +729,15 @@ bool CMusicDatabase::AddAlbum(CAlbum& album, int idSource)
     // Having added artist credits (maybe with MBID) add the other contributing artists (no MBID)
     // and use COMPOSERSORT tag data to provide sort names for artists that are composers
     AddSongContributors(song->idSong, song->GetContributors(), song->GetComposerSort());
-    albumDuration += song->iDuration;
   }
+
+  // Set album duration as total of all songs on album.
+  // Folder layout may mean AddAlbum call has added more songs to an existing album
+  std::string strSQL;
+  strSQL = PrepareSQL("SELECT SUM(iDuration) FROM song WHERE idAlbum = %i", album.idAlbum);
+  int albumDuration = static_cast<int>(strtol(GetSingleValue(strSQL).c_str(), nullptr, 10));
+  m_pDS->exec(PrepareSQL("UPDATE album SET iAlbumDuration = %i WHERE idAlbum = %i", albumDuration,
+                         album.idAlbum));
 
   // Add album sources
   if (idSource > 0)
@@ -782,7 +788,6 @@ bool CMusicDatabase::AddAlbum(CAlbum& album, int idSource)
      For artists that are neither album nor song artists (other roles only) dateadded will be null.
   */
   std::vector<std::string> artistIDs;
-  std::string strSQL;
   // Get distinct song and album artist IDs for this album
   GetArtistsByAlbum(album.idAlbum, artistIDs);
   std::string strIDs = "(" + StringUtils::Join(artistIDs, ",") + ")";
@@ -791,8 +796,6 @@ bool CMusicDatabase::AddAlbum(CAlbum& album, int idSource)
                       albumdateadded.c_str(), strIDs.c_str(), albumdateadded.c_str());
   m_pDS->exec(strSQL);
 
-  m_pDS->exec(PrepareSQL("UPDATE album SET iAlbumDuration = %i WHERE idAlbum = %i", albumDuration,
-                         album.idAlbum));
   CommitTransaction();
   return true;
 }
@@ -1614,8 +1617,7 @@ bool CMusicDatabase::UpdateArtist(const CArtist& artist)
                artist.strBiography, artist.strDied,
                artist.strDisbanded,
                StringUtils::Join(artist.yearsActive, itemSeparator).c_str(),
-               artist.thumbURL.GetData(),
-               artist.fanart.m_xml.c_str());
+               artist.thumbURL.GetData());
 
   DeleteArtistDiscography(artist.idArtist);
   for (const auto &disc : artist.discography)
@@ -1790,10 +1792,8 @@ int  CMusicDatabase::UpdateArtist(int idArtist,
                                   const std::string& strStyles, const std::string& strInstruments,
                                   const std::string& strBiography, const std::string& strDied,
                                   const std::string& strDisbanded, const std::string& strYearsActive,
-                                  const std::string& strImage, const std::string& strFanart)
+                                  const std::string& strImage)
 {
-  CScraperUrl thumbURL;
-  CFanart fanart;
   if (idArtist < 0)
     return -1;
 
@@ -1818,7 +1818,7 @@ int  CMusicDatabase::UpdateArtist(int idArtist,
                       " strBorn = '%s', strFormed = '%s', strGenres = '%s', "
                       " strMoods = '%s', strStyles = '%s', strInstruments = '%s', "
                       " strBiography = '%s', strDied = '%s', strDisbanded = '%s', "
-                      " strYearsActive = '%s', strImage = '%s', strFanart = '%s', "
+                      " strYearsActive = '%s', strImage = '%s', "
                       " lastScraped = '%s', bScrapedMBID = %i",
                       strArtist.c_str(),
                       /* strSortName.c_str(),*/
@@ -1827,7 +1827,7 @@ int  CMusicDatabase::UpdateArtist(int idArtist,
                       strBorn.c_str(), strFormed.c_str(), strGenres.c_str(),
                       strMoods.c_str(), strStyles.c_str(), strInstruments.c_str(),
                       strBiography.c_str(), strDied.c_str(), strDisbanded.c_str(),
-                      strYearsActive.c_str(), strImage.c_str(), strFanart.c_str(),
+                      strYearsActive.c_str(), strImage.c_str(),
                       CDateTime::GetUTCDateTime().GetAsDBDateTime().c_str(), isScrapedMBID);
   if (useMBIDNull)
     strSQL += PrepareSQL(", strMusicBrainzArtistID = NULL");
@@ -2316,7 +2316,10 @@ bool CMusicDatabase::DeleteSongArtistsBySong(int idSong)
   return ExecuteQuery(PrepareSQL("DELETE FROM song_artist WHERE idSong = %i", idSong));
 }
 
-bool CMusicDatabase::AddAlbumArtist(int idArtist, int idAlbum, std::string strArtist, int iOrder)
+bool CMusicDatabase::AddAlbumArtist(int idArtist,
+                                    int idAlbum,
+                                    const std::string& strArtist,
+                                    int iOrder)
 {
   std::string strSQL;
   strSQL = PrepareSQL("replace into album_artist (idArtist, idAlbum, strArtist, iOrder) values(%i,%i,'%s',%i)",
@@ -2989,8 +2992,6 @@ CArtist CMusicDatabase::GetArtistFromDataset(const dbiplus::sql_record* const re
 
   if (needThumb)
   {
-    artist.fanart.m_xml = record->at(artist_strFanart).get_asString();
-    artist.fanart.Unpack();
     artist.thumbURL.ParseFromData(record->at(artist_strImage).get_asString());
   }
 
@@ -3115,7 +3116,7 @@ bool CMusicDatabase::SearchArtists(const std::string& search, CFileItemList &art
       return false;
     }
 
-    std::string artistLabel(g_localizeStrings.Get(557)); // Artist
+    const std::string& artistLabel(g_localizeStrings.Get(557)); // Artist
     while (!m_pDS->eof())
     {
       std::string path = StringUtils::Format("musicdb://artists/%i/", m_pDS->fv(0).get_asInt());
@@ -3684,7 +3685,6 @@ bool CMusicDatabase::SearchSongs(const std::string& search, CFileItemList &items
     if (!m_pDS->query(strSQL)) return false;
     if (m_pDS->num_rows() == 0) return false;
 
-    std::string songLabel = g_localizeStrings.Get(179); // Song
     while (!m_pDS->eof())
     {
       CFileItemPtr item(new CFileItem);
@@ -3721,7 +3721,7 @@ bool CMusicDatabase::SearchAlbums(const std::string& search, CFileItemList &albu
 
     if (!m_pDS->query(strSQL)) return false;
 
-    std::string albumLabel(g_localizeStrings.Get(558)); // Album
+    const std::string& albumLabel(g_localizeStrings.Get(558)); // Album
     while (!m_pDS->eof())
     {
       CAlbum album = GetAlbumFromDataset(m_pDS.get());
@@ -4080,7 +4080,7 @@ int CMusicDatabase::Cleanup(CGUIDialogProgress* progressDialog /*= nullptr*/)
   int ret = ERROR_OK;
   unsigned int time = XbmcThreads::SystemClockMillis();
   CLog::Log(LOGINFO, "%s: Starting musicdatabase cleanup ..", __FUNCTION__);
-  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::AudioLibrary, "xbmc", "OnCleanStarted");
+  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::AudioLibrary, "OnCleanStarted");
 
   SetLibraryLastCleaned();
 
@@ -4216,7 +4216,7 @@ int CMusicDatabase::Cleanup(CGUIDialogProgress* progressDialog /*= nullptr*/)
   time = XbmcThreads::SystemClockMillis() - time;
   CLog::Log(LOGINFO, "%s: Cleaning musicdatabase done. Operation took %s", __FUNCTION__,
             StringUtils::SecondsToTimeString(time / 1000).c_str());
-  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::AudioLibrary, "xbmc", "OnCleanFinished");
+  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::AudioLibrary, "OnCleanFinished");
 
   if (!Compress(false))
   {
@@ -4228,7 +4228,7 @@ error:
   RollbackTransaction();
   // Recreate DELETE triggers on song_artist and album_artist
   CreateRemovedLinkTriggers();
-  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::AudioLibrary, "xbmc", "OnCleanFinished");
+  CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::AudioLibrary, "OnCleanFinished");
   return ret;
 }
 
@@ -4299,7 +4299,7 @@ bool CMusicDatabase::LookupCDDBInfo(bool bRequery/*=false*/)
           std::string strTitle = cddb.getInexactTitle(i);
           if (strTitle == "") break;
 
-          std::string strArtist = cddb.getInexactArtist(i);
+          const std::string& strArtist = cddb.getInexactArtist(i);
           if (!strArtist.empty())
             strTitle += " - " + strArtist;
 
@@ -7676,8 +7676,8 @@ std::string CMusicDatabase::GetIgnoreArticleSQL(const std::string& strField)
     StringUtils::Replace(tokenclause, "%", "%%");
     // Single %, _ and ' so avoid using PrepareSQL
     tokenclause = strField + " LIKE '" + tokenclause + "%'";
-    if (token.find("_") != std::string::npos)
-       tokenclause += " ESCAPE '_'";
+    if (token.find('_') != std::string::npos)
+      tokenclause += " ESCAPE '_'";
     if (!strWhen.empty())
        strWhen += " OR ";
     strWhen += tokenclause;
@@ -8579,7 +8579,55 @@ void CMusicDatabase::UpdateTables(int version)
                 "WHERE song.idAlbum = album.idAlbum) "
                 "WHERE EXISTS (SELECT 1 FROM song WHERE song.idAlbum = album.idAlbum)");
   }
-
+  if (version < 82)
+  {
+    // Update artist table combining fanart URL data into strImage field
+    // Clear empty URL data <fanart /> and <thumb />
+    m_pDS->exec("UPDATE artist SET strFanart = '' WHERE strFanart = '<fanart />'");
+    m_pDS->exec("UPDATE artist SET strImage = '' WHERE strImage = '<thumb />'");
+    //Prepare strFanart - strip <fanart>...</fanart>, add aspect to the URLs
+    m_pDS->exec("UPDATE artist SET strFanart = REPLACE(strFanart, '<fanart>', '')");
+    m_pDS->exec("UPDATE artist SET strFanart = REPLACE(strFanart, '</fanart>', '')");
+    m_pDS->exec("UPDATE artist SET strFanart = REPLACE(strFanart, 'thumb preview', 'thumb "
+                "aspect=\"fanart\" preview')");
+    // Remove strFanart column from artist table
+    m_pDS->exec("CREATE TABLE artist_new (idArtist INTEGER PRIMARY KEY, "
+                "strArtist varchar(256), strMusicBrainzArtistID text, "
+                "strSortName text, "
+                "strType text, strGender text, strDisambiguation text, "
+                "strBorn text, strFormed text, strGenres text, strMoods text, "
+                "strStyles text, strInstruments text, strBiography text, "
+                "strDied text, strDisbanded text, strYearsActive text, "
+                "strImage text, "
+                "lastScraped varchar(20) default NULL, "
+                "bScrapedMBID INTEGER NOT NULL DEFAULT 0, "
+                "idInfoSetting INTEGER NOT NULL DEFAULT 0, "
+                "dateAdded TEXT, dateNew TEXT, dateModified TEXT)");
+    // Concatentate fanart URLs into strImage field
+    // Prepare SQL to convert CONCAT to || in SQLite
+    m_pDS->exec(PrepareSQL("INSERT INTO artist_new "
+                           "(idArtist, strArtist, strMusicBrainzArtistID, "
+                           "strSortName, strType, strGender, strDisambiguation, "
+                           "strBorn, strFormed, strGenres, strMoods, "
+                           "strStyles , strInstruments , strBiography , "
+                           "strDied, strDisbanded, strYearsActive, "
+                           "strImage, "
+                           "lastScraped, bScrapedMBID, idInfoSetting, "
+                           "dateAdded, dateNew, dateModified) "
+                           "SELECT "
+                           "artist.idArtist, "
+                           "strArtist, strMusicBrainzArtistID, "
+                           "strSortName, strType, strGender, strDisambiguation, "
+                           "strBorn, strFormed, strGenres, strMoods, "
+                           "strStyles, strInstruments, strBiography, "
+                           "strDied, strDisbanded, strYearsActive, "
+                           "CONCAT(strImage, strFanart), "
+                           "lastScraped, bScrapedMBID, idInfoSetting, "
+                           "dateAdded, dateNew, dateModified "
+                           "FROM artist"));
+    m_pDS->exec("DROP TABLE artist");
+    m_pDS->exec("ALTER TABLE artist_new RENAME TO artist");
+  }
   // Set the verion of tag scanning required.
   // Not every schema change requires the tags to be rescanned, set to the highest schema version
   // that needs this. Forced rescanning (of music files that have not changed since they were
@@ -8600,7 +8648,7 @@ void CMusicDatabase::UpdateTables(int version)
 
 int CMusicDatabase::GetSchemaVersion() const
 {
-  return 81; // Bump version to add iDisctotal to songview for MusicPlayer infolabel and boolean
+  return 82;
 }
 
 int CMusicDatabase::GetMusicNeedsTagScan()
@@ -9903,6 +9951,91 @@ int CMusicDatabase::GetAlbumByName(const std::string& strAlbum, const std::strin
   return -1;
 }
 
+bool CMusicDatabase::GetMatchingMusicVideoAlbum(const std::string& strAlbum,
+                                                const std::string& strArtist,
+                                                int& idAlbum,
+                                                std::string& strReview)
+{
+  /*
+    Get the first album that matches with the title and artist display name.
+    Artist(s) and album title may not be sufficient to uniquely identify a match since library can
+    store multiple releases, and occasionally artists even have different albums with same name.
+    Taking the first album that matches and ignoring re-releases etc. is acceptable for musicvideo
+  */
+  try
+  {
+    if (nullptr == m_pDB)
+      return false;
+    if (nullptr == m_pDS)
+      return false;
+
+    std::string strSQL;
+    if (strArtist.empty())
+      strSQL =
+          PrepareSQL("SELECT idAlbum, strReview FROM album WHERE album.strAlbum LIKE '%s'",
+                     strAlbum.c_str());
+    else
+      strSQL =
+          PrepareSQL("SELECT idAlbum, strReview FROM album WHERE album.strAlbum LIKE '%s' AND "
+                     "album.strArtistDisp LIKE '%s'",
+                     strAlbum.c_str(), strArtist.c_str());
+    // run query
+    if (!m_pDS->query(strSQL))
+      return false;
+    int iRowsFound = m_pDS->num_rows();
+    if (iRowsFound > 0)
+    {
+      idAlbum = m_pDS->fv("idAlbum").get_asInt();
+      strReview = m_pDS->fv("strReview").get_asString();
+      return true;
+    }
+  }
+  catch (...)
+  {
+    CLog::Log(LOGERROR, "%s failed", __FUNCTION__);
+  }
+  return false;
+}
+
+bool CMusicDatabase::SearchAlbumsByArtistName(const std::string& strArtist, CFileItemList& items)
+{
+  try
+  {
+    if (nullptr == m_pDB)
+      return false;
+    if (nullptr == m_pDS)
+      return false;
+
+    std::string strSQL;
+    strSQL = PrepareSQL("SELECT albumview.* FROM albumview "
+      "JOIN album_artist ON album_artist.idAlbum = albumview.idAlbum "
+      "WHERE  album_artist.strArtist LIKE '%s'",
+      strArtist.c_str());
+
+    if (!m_pDS->query(strSQL))
+      return false;
+
+    while (!m_pDS->eof())
+    {
+      CAlbum album = GetAlbumFromDataset(m_pDS.get());
+      std::string path = StringUtils::Format("musicdb://albums/%ld/", album.idAlbum);
+      CFileItemPtr pItem(new CFileItem(path, album));
+      std::string label =
+        StringUtils::Format("%s (%i)", album.strAlbum, pItem->GetMusicInfoTag()->GetYear());
+      pItem->SetLabel(label);
+      items.Add(pItem);
+      m_pDS->next();
+    }
+    m_pDS->close(); // cleanup recordset data
+    return true;
+  }
+  catch (...)
+  {
+    CLog::Log(LOGERROR, "%s failed", __FUNCTION__);
+  }
+  return false;
+}
+
 int CMusicDatabase::GetAlbumByName(const std::string& strAlbum, const std::vector<std::string>& artist)
 {
   return GetAlbumByName(strAlbum, StringUtils::Join(artist, CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_musicItemSeparator));
@@ -10545,7 +10678,7 @@ bool CMusicDatabase::CommitTransaction()
   return false;
 }
 
-bool CMusicDatabase::SetScraperAll(const std::string & strBaseDir, const ADDON::ScraperPtr scraper)
+bool CMusicDatabase::SetScraperAll(const std::string& strBaseDir, const ADDON::ScraperPtr& scraper)
 {
   if (nullptr == m_pDB)
     return false;
@@ -10622,7 +10755,9 @@ bool CMusicDatabase::SetScraperAll(const std::string & strBaseDir, const ADDON::
   return false;
 }
 
-bool CMusicDatabase::SetScraper(int id, const CONTENT_TYPE &content, const ADDON::ScraperPtr scraper)
+bool CMusicDatabase::SetScraper(int id,
+                                const CONTENT_TYPE& content,
+                                const ADDON::ScraperPtr& scraper)
 {
   if (nullptr == m_pDB)
     return false;
@@ -11155,7 +11290,8 @@ void CMusicDatabase::ExportToXML(const CLibExportSettings& settings,  CGUIDialog
       data["file"] = xmlFile;
       if (iFailCount > 0)
         data["failcount"] = iFailCount;
-      CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::AudioLibrary, "xbmc", "OnExport", data);
+      CServiceBroker::GetAnnouncementManager()->Announce(ANNOUNCEMENT::AudioLibrary, "OnExport",
+                                                         data);
     }
   }
   catch (...)
@@ -12006,11 +12142,6 @@ std::vector<std::string> CMusicDatabase::GetAvailableArtTypesForItem(int mediaId
     CArtist artist;
     if (GetArtist(mediaId, artist))
     {
-      //! @todo artwork: fanart stored separately, doesn't need to be
-      if (artist.fanart.GetNumFanarts())
-        result.emplace_back("fanart");
-
-      // all other images
       for (const auto& urlEntry : artist.thumbURL.GetUrls())
       {
         std::string artType = urlEntry.m_aspect;

@@ -21,6 +21,14 @@
 #include <X11/Xutil.h>
 
 class IDispResource;
+
+namespace KODI
+{
+namespace WINDOWING
+{
+namespace X11
+{
+
 class CWinEventsX11;
 
 class CWinSystemX11 : public CWinSystemBase
@@ -57,7 +65,7 @@ public:
   int GetScreen() { return m_screen; }
   void NotifyXRREvent();
   void GetConnectedOutputs(std::vector<std::string> *outputs);
-  bool IsCurrentOutput(std::string output);
+  bool IsCurrentOutput(const std::string& output);
   void RecreateWindow();
   int GetCrtc() { return m_crtc; }
 
@@ -100,3 +108,7 @@ private:
   bool HasWindowManager();
   void UpdateCrtc();
 };
+
+}
+}
+}

@@ -154,6 +154,12 @@ namespace PVR
      */
     int EnabledClientAmount() const;
 
+    /*!
+     * @brief Get a list of the enabled client infos.
+     * @return A list of enabled client infos.
+     */
+    std::vector<CVariant> GetEnabledClientInfos() const;
+
     //@}
 
     /*! @name general methods */
@@ -354,7 +360,8 @@ namespace PVR
      * @param function The function to wrap. It has to have return type PVR_ERROR and must take a const reference to a std::shared_ptr<CPVRClient> as parameter.
      * @return PVR_ERROR_NO_ERROR on success, any other PVR_ERROR_* value otherwise.
      */
-    PVR_ERROR ForCreatedClients(const char* strFunctionName, PVRClientFunction function) const;
+    PVR_ERROR ForCreatedClients(const char* strFunctionName,
+                                const PVRClientFunction& function) const;
 
     /*!
      * @brief Wraps calls to all created clients in order to do common pre and post function invocation actions.
@@ -363,7 +370,9 @@ namespace PVR
      * @param failedClients Contains a list of the ids of clients for that the call failed, if any.
      * @return PVR_ERROR_NO_ERROR on success, any other PVR_ERROR_* value otherwise.
      */
-    PVR_ERROR ForCreatedClients(const char* strFunctionName, PVRClientFunction function, std::vector<int>& failedClients) const;
+    PVR_ERROR ForCreatedClients(const char* strFunctionName,
+                                const PVRClientFunction& function,
+                                std::vector<int>& failedClients) const;
 
     mutable CCriticalSection m_critSection;
     CPVRClientMap m_clientMap;

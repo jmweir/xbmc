@@ -31,7 +31,7 @@ extern "C" {
 class CRenderCapture;
 class CRenderSystemGL;
 
-class CBaseTexture;
+class CTexture;
 namespace Shaders { class BaseYUV2RGBGLSLShader; }
 namespace Shaders { class BaseVideoFilterShader; }
 
@@ -185,7 +185,7 @@ protected:
   struct CPictureBuffer
   {
     CPictureBuffer();
-   ~CPictureBuffer();
+    ~CPictureBuffer() = default;
 
     CYuvPlane fields[MAX_FIELDS][YuvImage::MAX_PLANES];
     YuvImage image;

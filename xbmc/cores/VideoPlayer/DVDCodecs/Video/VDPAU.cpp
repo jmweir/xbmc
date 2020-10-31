@@ -12,7 +12,7 @@
 #include "DVDCodecs/DVDCodecUtils.h"
 #include "ServiceBroker.h"
 #include "cores/VideoPlayer/DVDCodecs/DVDFactoryCodec.h"
-#include "cores/VideoPlayer/Interface/Addon/TimingConstants.h"
+#include "cores/VideoPlayer/Interface/TimingConstants.h"
 #include "cores/VideoPlayer/Process/ProcessInfo.h"
 #include "cores/VideoPlayer/VideoRenderers/RenderFlags.h"
 #include "cores/VideoPlayer/VideoRenderers/RenderManager.h"
@@ -192,7 +192,7 @@ bool CVDPAUContext::CreateContext()
     if (!m_display)
       return false;
 
-    screen = static_cast<CWinSystemX11*>(CServiceBroker::GetWinSystem())->GetScreen();
+    screen = static_cast<KODI::WINDOWING::X11::CWinSystemX11*>(CServiceBroker::GetWinSystem())->GetScreen();
   }
 
   VdpStatus vdp_st;

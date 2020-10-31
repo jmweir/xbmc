@@ -25,6 +25,7 @@
 #include "utils/StringUtils.h"
 #include "utils/log.h"
 #include "windowing/GraphicContext.h"
+#include "windowing/WindowSystemFactory.h"
 
 #include "platform/freebsd/OptionalsReg.h"
 #include "platform/linux/OptionalsReg.h"
@@ -35,11 +36,17 @@
 #include <X11/Xutil.h>
 
 using namespace KODI;
+using namespace KODI::WINDOWING::X11;
 
-std::unique_ptr<CWinSystemBase> CWinSystemBase::CreateWinSystem()
+
+void CWinSystemX11GLContext::Register()
 {
-  std::unique_ptr<CWinSystemBase> winSystem(new CWinSystemX11GLContext());
-  return winSystem;
+  KODI::WINDOWING::CWindowSystemFactory::RegisterWindowSystem(CreateWinSystem, "x11");
+}
+
+std::unique_ptr<CWinSystemBase> CWinSystemX11GLContext::CreateWinSystem()
+{
+  return std::make_unique<CWinSystemX11GLContext>();
 }
 
 CWinSystemX11GLContext::CWinSystemX11GLContext()
@@ -120,12 +127,12 @@ bool CWinSystemX11GLContext::IsExtSupported(const char* extension) const
 
 XID CWinSystemX11GLContext::GetWindow() const
 {
-  return X11::GLXGetWindow(m_pGLContext);
+  return GLXGetWindow(m_pGLContext);
 }
 
 void* CWinSystemX11GLContext::GetGlxContext() const
 {
-  return X11::GLXGetContext(m_pGLContext);
+  return GLXGetContext(m_pGLContext);
 }
 
 EGLDisplay CWinSystemX11GLContext::GetEGLDisplay() const
@@ -296,15 +303,15 @@ bool CWinSystemX11GLContext::RefreshGLContext(bool force)
     {
       if (!isNvidia)
       {
-        m_vaapiProxy.reset(X11::VaapiProxyCreate());
-        X11::VaapiProxyConfig(m_vaapiProxy.get(), GetDisplay(),
+        m_vaapiProxy.reset(VaapiProxyCreate());
+        VaapiProxyConfig(m_vaapiProxy.get(), GetDisplay(),
                               static_cast<CGLContextEGL*>(m_pGLContext)->m_eglDisplay);
         bool general = false;
         bool deepColor = false;
-        X11::VAAPIRegisterRender(m_vaapiProxy.get(), general, deepColor);
+        VAAPIRegisterRender(m_vaapiProxy.get(), general, deepColor);
         if (general)
         {
-          X11::VAAPIRegister(m_vaapiProxy.get(), deepColor);
+          VAAPIRegister(m_vaapiProxy.get(), deepColor);
           return true;
         }
         if (isIntel || gli == "EGL")
@@ -322,12 +329,12 @@ bool CWinSystemX11GLContext::RefreshGLContext(bool force)
   delete m_pGLContext;
 
   // fallback for vdpau
-  m_pGLContext = X11::GLXContextCreate(m_dpy);
+  m_pGLContext = GLXContextCreate(m_dpy);
   success = m_pGLContext->Refresh(force, m_screen, m_glWindow, m_newGlContext);
   if (success)
   {
-    X11::VDPAURegister();
-    X11::VDPAURegisterRender();
+    VDPAURegister();
+    VDPAURegisterRender();
   }
   return success;
 }
@@ -342,7 +349,7 @@ std::unique_ptr<CVideoSync> CWinSystemX11GLContext::GetVideoSync(void *clock)
   }
   else
   {
-    pVSync.reset(X11::GLXVideoSyncCreate(clock, *this));
+    pVSync.reset(GLXVideoSyncCreate(clock, *this));
   }
 
   return pVSync;
@@ -373,5 +380,5 @@ uint64_t CWinSystemX11GLContext::GetVblankTiming(uint64_t &msc, uint64_t &interv
 
 void CWinSystemX11GLContext::delete_CVaapiProxy::operator()(CVaapiProxy *p) const
 {
-  X11::VaapiProxyDelete(p);
+  VaapiProxyDelete(p);
 }

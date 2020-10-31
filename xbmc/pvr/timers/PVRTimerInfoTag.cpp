@@ -299,6 +299,7 @@ void CPVRTimerInfoTag::Serialize(CVariant& value) const
   value["istimerrule"] = m_timerType && m_timerType->IsTimerRule();
   value["ismanual"] = m_timerType && m_timerType->IsManual();
   value["isreadonly"] = m_timerType && m_timerType->IsReadOnly();
+  value["isreminder"] = m_timerType && m_timerType->IsReminder();
 
   value["epgsearchstring"]   = m_strEpgSearchString;
   value["fulltextepgsearch"] = m_bFullTextEpgSearch;
@@ -306,6 +307,8 @@ void CPVRTimerInfoTag::Serialize(CVariant& value) const
   value["maxrecordings"]     = m_iMaxRecordings;
   value["epguid"]            = m_iEpgUid;
   value["serieslink"]        = m_strSeriesLink;
+
+  value["clientid"] = m_iClientId;
 }
 
 void CPVRTimerInfoTag::UpdateSummary()
@@ -531,18 +534,6 @@ TimerOperationResult CPVRTimerInfoTag::DeleteFromClient(bool bForce /* = false *
   return (error == PVR_ERROR_NO_ERROR) ? TimerOperationResult::OK : TimerOperationResult::FAILED;
 }
 
-bool CPVRTimerInfoTag::RenameOnClient(const std::string& strNewName)
-{
-  {
-    // set the new timer title locally
-    CSingleLock lock(m_critSection);
-    m_strTitle = strNewName;
-  }
-
-  // update timer data in the backend
-  return UpdateOnClient();
-}
-
 bool CPVRTimerInfoTag::Persist()
 {
   const std::shared_ptr<CPVRDatabase> database = CServiceBroker::GetPVRManager().GetTVDatabase();
@@ -708,7 +699,8 @@ std::shared_ptr<CPVRTimerInfoTag> CPVRTimerInfoTag::CreateReminderFromDate(
   const std::shared_ptr<CPVRTimerInfoTag>& parent /* = std::shared_ptr<CPVRTimerInfoTag>() */)
 {
   bool bReadOnly = !!parent; // children of reminder rules are always read-only
-  const std::shared_ptr<CPVRTimerInfoTag> newTimer = CreateFromDate(parent->Channel(), start, iDuration, true, bReadOnly);
+  std::shared_ptr<CPVRTimerInfoTag> newTimer =
+      CreateFromDate(parent->Channel(), start, iDuration, true, bReadOnly);
   if (newTimer && parent)
   {
     // set parent
@@ -848,7 +840,7 @@ std::shared_ptr<CPVRTimerInfoTag> CPVRTimerInfoTag::CreateReminderFromEpg(
   const std::shared_ptr<CPVRTimerInfoTag>& parent /* = std::shared_ptr<CPVRTimerInfoTag>() */)
 {
   bool bReadOnly = !!parent; // children of reminder rules are always read-only
-  const std::shared_ptr<CPVRTimerInfoTag> newTimer = CreateFromEpg(tag, false, true, bReadOnly);
+  std::shared_ptr<CPVRTimerInfoTag> newTimer = CreateFromEpg(tag, false, true, bReadOnly);
   if (newTimer && parent)
   {
     // set parent
@@ -868,7 +860,10 @@ std::shared_ptr<CPVRTimerInfoTag> CPVRTimerInfoTag::CreateFromEpg(
 }
 
 std::shared_ptr<CPVRTimerInfoTag> CPVRTimerInfoTag::CreateFromEpg(
-  const std::shared_ptr<CPVREpgInfoTag>& tag, bool bCreateRule, bool bCreateReminder, bool bReadOnly)
+    const std::shared_ptr<CPVREpgInfoTag>& tag,
+    bool bCreateRule,
+    bool bCreateReminder,
+    bool bReadOnly /* = false */)
 {
   std::shared_ptr<CPVRTimerInfoTag> newTag(new CPVRTimerInfoTag());
 

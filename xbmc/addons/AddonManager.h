@@ -26,6 +26,12 @@ namespace ADDON
 
   const std::string ADDON_PYTHON_EXT           = "*.py";
 
+  enum class AddonCheckType
+  {
+    OUTDATED_ADDONS,
+    AVAILABLE_UPDATES
+  };
+
   struct CAddonWithUpdate;
 
   /**
@@ -139,12 +145,15 @@ namespace ADDON
      */
     bool FindAddons();
 
-    /*! \brief Checks whether given addon with given version is installed
+    /*! \brief Checks whether given addon with given origin/version is installed
      * \param addonId addon to check
+     * \param origin origin to check
      * \param addonVersion version to check
      * \return True if installed, false otherwise
      */
-    bool FindAddon(const std::string& addonId, const AddonVersion& addonVersion);
+    bool FindAddon(const std::string& addonId,
+                   const std::string& origin,
+                   const AddonVersion& addonVersion);
 
     /*!
      * @brief Fills the the provided vector with the list of incompatible
@@ -190,7 +199,9 @@ namespace ADDON
      *
      * Returns true if the addon was successfully loaded and enabled; otherwise false.
      */
-    bool LoadAddon(const std::string& addonId, const AddonVersion& addonVersion);
+    bool LoadAddon(const std::string& addonId,
+                   const std::string& origin,
+                   const AddonVersion& addonVersion);
 
     /*! @note: should only be called by AddonInstaller
      *
@@ -236,7 +247,18 @@ namespace ADDON
     bool IsAddonInstalled(const std::string& ID);
 
     /* \brief Checks whether an addon is installed from a
+     *        particular origin repo
+     * \note if checked for an origin defined as official (i.e. repository.xbmc.org)
+     *       this function will return true even if the addon is a shipped system add-on
+     * \param ID id of the addon
+     * \param origin origin repository id
+     */
+    bool IsAddonInstalled(const std::string& ID, const std::string& origin) const;
+
+    /* \brief Checks whether an addon is installed from a
      *        particular origin repo and version
+     * \note if checked for an origin defined as official (i.e. repository.xbmc.org)
+     *       this function will return true even if the addon is a shipped system add-on
      * \param ID id of the addon
      * \param origin origin repository id
      * \param version the version of the addon
@@ -474,6 +496,14 @@ namespace ADDON
     bool GetCompatibleVersions(const std::string& addonId,
                                std::vector<std::shared_ptr<IAddon>>& compatibleVersions) const;
 
+    /*!
+     * \brief Return number of available updates formatted as string
+     *        this can be used as a lightweight method of retrieving the number of updates
+     *        rather than using the expensive GetAvailableUpdates call
+     * \return number of available updates
+     */
+    const std::string& GetLastAvailableUpdatesCountAsString() const;
+
   private:
     CAddonMgr& operator=(CAddonMgr const&) = delete;
 
@@ -487,7 +517,7 @@ namespace ADDON
      * \return vector filled with either available updates or outdated addons
      */
     std::vector<std::shared_ptr<IAddon>> GetAvailableUpdatesOrOutdatedAddons(
-        bool returnOutdatedAddons) const;
+        AddonCheckType addonCheckType) const;
 
     bool GetAddonsInternal(const TYPE& type,
                            VECADDONS& addons,
@@ -549,6 +579,12 @@ namespace ADDON
 
     // Temporary path given to add-ons, whose content is deleted when Kodi is stopped
     const std::string m_tempAddonBasePath = "special://temp/addons";
+
+    /*!
+     * latest count of available updates
+     */
+    mutable std::string m_lastAvailableUpdatesCountAsString;
+    mutable std::mutex m_lastAvailableUpdatesCountMutex;
   };
 
 }; /* namespace ADDON */

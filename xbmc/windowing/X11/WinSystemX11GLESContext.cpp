@@ -23,15 +23,21 @@
 #include "threads/SingleLock.h"
 #include "utils/log.h"
 #include "windowing/GraphicContext.h"
+#include "windowing/WindowSystemFactory.h"
 
 #include "platform/linux/OptionalsReg.h"
 
 using namespace KODI;
+using namespace KODI::WINDOWING::X11;
 
-std::unique_ptr<CWinSystemBase> CWinSystemBase::CreateWinSystem()
+void CWinSystemX11GLESContext::Register()
 {
-  std::unique_ptr<CWinSystemBase> winSystem(new CWinSystemX11GLESContext());
-  return winSystem;
+  KODI::WINDOWING::CWindowSystemFactory::RegisterWindowSystem(CreateWinSystem, "x11");
+}
+
+std::unique_ptr<CWinSystemBase> CWinSystemX11GLESContext::CreateWinSystem()
+{
+  return std::make_unique<CWinSystemX11GLESContext>();
 }
 
 CWinSystemX11GLESContext::CWinSystemX11GLESContext()
@@ -268,8 +274,8 @@ XVisualInfo* CWinSystemX11GLESContext::GetVisual()
     return nullptr;
   }
   int num_visuals;
-  XVisualInfo* visual = 
-    XGetVisualInfo(m_dpy, VisualIDMask, &x11_visual_info_template, &num_visuals);
+  XVisualInfo* visual =
+      XGetVisualInfo(m_dpy, VisualIDMask, &x11_visual_info_template, &num_visuals);
   return visual;
 }
 
