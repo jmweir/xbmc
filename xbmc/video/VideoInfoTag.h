@@ -71,6 +71,7 @@ public:
    */
   bool Load(const TiXmlElement *element, bool append = false, bool prioritise = false);
   bool Save(TiXmlNode *node, const std::string &tag, bool savePathInfo = true, const TiXmlElement *additionalNode = NULL);
+  void Merge(CVideoInfoTag& other);
   void Archive(CArchive& ar) override;
   void Serialize(CVariant& value) const override;
   void ToSortable(SortItem& sortable, Field field) const override;
@@ -139,7 +140,7 @@ public:
   void SetUniqueIDs(std::map<std::string, std::string> uniqueIDs);
   void SetPremiered(const CDateTime& premiered);
   void SetPremieredFromDBDate(const std::string& premieredString);
-  void SetYear(int year);
+  virtual void SetYear(int year);
   void SetArtist(std::vector<std::string> artist);
   void SetSet(std::string set);
   void SetSetOverview(std::string setOverview);

@@ -70,6 +70,31 @@ static const struct StereoModeConversionMap WmvToInternalStereoModeMap[] =
   {}
 };
 
+namespace
+{
+const std::vector<std::string> font_mimetypes = {"application/x-truetype-font",
+                                                 "application/vnd.ms-opentype",
+                                                 "application/x-font-ttf",
+                                                 "application/x-font", // probably incorrect
+                                                 "application/font-sfnt",
+                                                 "font/collection",
+                                                 "font/otf",
+                                                 "font/sfnt",
+                                                 "font/ttf"};
+
+bool AttachmentIsFont(const AVDictionaryEntry* dict)
+{
+  if (dict)
+  {
+    const std::string mimeType = dict->value;
+    return std::find_if(font_mimetypes.begin(), font_mimetypes.end(), [&mimeType](std::string str) {
+             return str == mimeType;
+           }) != font_mimetypes.end();
+  }
+  return false;
+}
+} // namespace
+
 #define FF_MAX_EXTRADATA_SIZE ((1 << 28) - AV_INPUT_BUFFER_PADDING_SIZE)
 
 std::string CDemuxStreamAudioFFmpeg::GetStreamName()
@@ -1133,8 +1158,9 @@ DemuxPacket* CDVDDemuxFFmpeg::Read()
     // we already check for a valid m_streams[pPacket->iStreamId] above
     else if (stream->type == STREAM_AUDIO)
     {
-      if (static_cast<CDemuxStreamAudio*>(stream)->iChannels != m_pFormatContext->streams[pPacket->iStreamId]->codecpar->channels ||
-          static_cast<CDemuxStreamAudio*>(stream)->iSampleRate != m_pFormatContext->streams[pPacket->iStreamId]->codecpar->sample_rate)
+      CDemuxStreamAudioFFmpeg* audiostream = dynamic_cast<CDemuxStreamAudioFFmpeg*>(stream);
+      if (audiostream && (audiostream->iChannels != m_pFormatContext->streams[pPacket->iStreamId]->codecpar->channels ||
+          audiostream->iSampleRate != m_pFormatContext->streams[pPacket->iStreamId]->codecpar->sample_rate))
       {
         // content has changed
         stream = AddStream(pPacket->iStreamId);
@@ -1652,9 +1678,13 @@ CDemuxStream* CDVDDemuxFFmpeg::AddStream(int streamIdx)
         }
       }
       case AVMEDIA_TYPE_ATTACHMENT:
-      { //mkv attachments. Only bothering with fonts for now.
+      {
+        // mkv attachments. Only bothering with fonts for now.
+        AVDictionaryEntry* attachmentMimetype =
+            av_dict_get(pStream->metadata, "mimetype", nullptr, 0);
+
         if (pStream->codecpar->codec_id == AV_CODEC_ID_TTF ||
-            pStream->codecpar->codec_id == AV_CODEC_ID_OTF)
+            pStream->codecpar->codec_id == AV_CODEC_ID_OTF || AttachmentIsFont(attachmentMimetype))
         {
           std::string fileName = "special://temp/fonts/";
           XFILE::CDirectory::Create(fileName);
@@ -2009,6 +2039,15 @@ bool CDVDDemuxFFmpeg::IsProgramChange()
       return true;
     if (m_pFormatContext->streams[idx]->codecpar->codec_id != stream->codec)
       return true;
+    if (m_pFormatContext->streams[idx]->codecpar->codec_type == AVMEDIA_TYPE_AUDIO)
+    {
+      CDemuxStreamAudioFFmpeg* audiostream = dynamic_cast<CDemuxStreamAudioFFmpeg*>(stream);
+      if (audiostream &&
+          m_pFormatContext->streams[idx]->codecpar->channels != audiostream->iChannels)
+      {
+        return true;
+      }
+    }
     if (m_pFormatContext->streams[idx]->codecpar->extradata_size != static_cast<int>(stream->ExtraSize))
       return true;
   }

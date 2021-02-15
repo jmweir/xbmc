@@ -571,6 +571,7 @@ public:
   void SetPropertiesForFileItem(CFileItem& item);
   static void SetPropertiesFromArtist(CFileItem& item, const CArtist& artist);
   static void SetPropertiesFromAlbum(CFileItem& item, const CAlbum& album);
+  void SetItemUpdated(int mediaId, const std::string& mediaType);
 
   /////////////////////////////////////////////////
   // Art
@@ -669,6 +670,16 @@ public:
   */
   std::vector<std::string> GetAvailableArtTypesForItem(int mediaId, const MediaType& mediaType);
 
+  /*! \brief Fetch the list of available-but-unassigned art URLs held in the
+  database for a specific media item and art type.
+  \param mediaId the id in the media (artist/album) table.
+  \param mediaType corresponds to the table the item resides in (artist/album).
+  \param artType e.g. "thumb", "fanart", etc.
+  \return list of URLs
+  */
+  std::vector<CScraperUrl::SUrlEntry> GetAvailableArtForItem(
+    int mediaId, const MediaType& mediaType, const std::string& artType);
+
   /////////////////////////////////////////////////
   // Tag Scan Version
   /////////////////////////////////////////////////
@@ -753,6 +764,7 @@ private:
   bool SearchSongs(const std::string& strSearch, CFileItemList &songs);
   int GetSongIDFromPath(const std::string &filePath);
   void NormaliseSongDates(std::string& strRelease, std::string& strOriginal);
+  bool TrimImageURLs(std::string& strImage, const size_t space);
 
   /*! \brief Build SQL  for sort subquery from ignore article token list
   \param strField original name or title field that articles could be removed from

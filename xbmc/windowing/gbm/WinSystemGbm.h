@@ -13,8 +13,6 @@
 #include "threads/CriticalSection.h"
 #include "windowing/WinSystem.h"
 
-#include "platform/freebsd/OptionalsReg.h"
-#include "platform/linux/OptionalsReg.h"
 #include "platform/linux/input/LibInputHandler.h"
 
 #include <utility>
@@ -35,6 +33,8 @@ class CWinSystemGbm : public CWinSystemBase
 public:
   CWinSystemGbm();
   ~CWinSystemGbm() override = default;
+
+  const std::string GetName() override { return "gbm"; }
 
   bool InitWindowSystem() override;
   bool DestroyWindowSystem() override;
@@ -77,7 +77,6 @@ protected:
 
   bool m_dispReset = false;
   XbmcThreads::EndTime m_dispResetTimer;
-  std::unique_ptr<OPTIONALS::CLircContainer, OPTIONALS::delete_CLircContainer> m_lirc;
   std::unique_ptr<CLibInputHandler> m_libinput;
 };
 

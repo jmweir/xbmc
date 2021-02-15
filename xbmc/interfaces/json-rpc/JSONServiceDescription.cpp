@@ -107,6 +107,8 @@ JsonRpcMethodMap CJSONServiceDescription::m_methodMaps[] = {
   { "AudioLibrary.GetGenres",                       CAudioLibrary::GetGenres },
   { "AudioLibrary.GetRoles",                        CAudioLibrary::GetRoles },
   { "AudioLibrary.GetSources",                      CAudioLibrary::GetSources },
+  { "AudioLibrary.GetAvailableArtTypes",            CAudioLibrary::GetAvailableArtTypes },
+  { "AudioLibrary.GetAvailableArt",                 CAudioLibrary::GetAvailableArt },
   { "AudioLibrary.SetArtistDetails",                CAudioLibrary::SetArtistDetails },
   { "AudioLibrary.SetAlbumDetails",                 CAudioLibrary::SetAlbumDetails },
   { "AudioLibrary.SetSongDetails",                  CAudioLibrary::SetSongDetails },
@@ -117,6 +119,8 @@ JsonRpcMethodMap CJSONServiceDescription::m_methodMaps[] = {
 // Video Library
   { "VideoLibrary.GetGenres",                       CVideoLibrary::GetGenres },
   { "VideoLibrary.GetTags",                         CVideoLibrary::GetTags },
+  { "VideoLibrary.GetAvailableArtTypes",            CVideoLibrary::GetAvailableArtTypes },
+  { "VideoLibrary.GetAvailableArt",                 CVideoLibrary::GetAvailableArt },
   { "VideoLibrary.GetMovies",                       CVideoLibrary::GetMovies },
   { "VideoLibrary.GetMovieDetails",                 CVideoLibrary::GetMovieDetails },
   { "VideoLibrary.GetMovieSets",                    CVideoLibrary::GetMovieSets },
@@ -957,7 +961,7 @@ JSONRPC_STATUS JSONSchemaTypeDefinition::Check(const CVariant& value,
   // If we have a string, we need to check the length
   if (HasType(type, StringValue) && value.isString())
   {
-    int size = value.asString().size();
+    int size = static_cast<int>(value.asString().size());
     if (size < minLength)
     {
       CLog::Log(LOGDEBUG, "JSONRPC: Value does not meet minLength requirements in type %s", name.c_str());
@@ -1225,7 +1229,7 @@ JSONSchemaTypeDefinition::CJsonSchemaPropertiesMap::JSONSchemaPropertiesIterator
 
 unsigned int JSONSchemaTypeDefinition::CJsonSchemaPropertiesMap::size() const
 {
-  return m_propertiesmap.size();
+  return static_cast<unsigned int>(m_propertiesmap.size());
 }
 
 JsonRpcMethod::JsonRpcMethod()
