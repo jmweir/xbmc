@@ -61,7 +61,7 @@ namespace PVR
      * @brief Get the minimal database version that is required to operate correctly.
      * @return The minimal database version.
      */
-    int GetSchemaVersion() const override { return 37; }
+    int GetSchemaVersion() const override { return 38; }
 
     /*!
      * @brief Get the default sqlite database filename.
@@ -126,10 +126,9 @@ namespace PVR
     /*!
      * @brief Get the list of channels from the database
      * @param results The channel group to store the results in.
-     * @param bCompressDB Compress the DB after getting the list
      * @return The amount of channels that were added.
      */
-    int Get(CPVRChannelGroup& results, bool bCompressDB);
+    int Get(CPVRChannelGroup& results);
 
     //@}
 
@@ -264,6 +263,8 @@ namespace PVR
     bool PersistChannels(CPVRChannelGroup& group);
 
     bool RemoveChannelsFromGroup(const CPVRChannelGroup& group);
+    void InsertChannelIntoGroup(const std::shared_ptr<CPVRChannel>& channel,
+                                CPVRChannelGroup& group);
 
     int GetClientIdByChannelId(int iChannelId);
 

@@ -7,7 +7,6 @@
  */
 
 #include "network/Network.h"
-#include "threads/SystemClock.h"
 #if defined(TARGET_DARWIN)
 #include <sys/param.h>
 #include <mach-o/dyld.h>
@@ -679,7 +678,7 @@ void CUtil::ClearSubtitles()
 
 void CUtil::ClearTempFonts()
 {
-  std::string searchPath = "special://temp/fonts/";
+  const std::string searchPath = "special://home/media/Fonts/";
 
   if (!CDirectory::Exists(searchPath))
     return;
@@ -691,7 +690,9 @@ void CUtil::ClearTempFonts()
   {
     if (item->m_bIsFolder)
       continue;
-    CFile::Delete(item->GetPath());
+
+    if (StringUtils::StartsWithNoCase(URIUtils::GetFileName(item->GetPath()), "tmp.font."))
+      CFile::Delete(item->GetPath());
   }
 }
 
@@ -1981,7 +1982,7 @@ int CUtil::ScanArchiveForAssociatedItems(const std::string& strArchivePath,
 
 void CUtil::ScanForExternalSubtitles(const std::string& strMovie, std::vector<std::string>& vecSubtitles)
 {
-  unsigned int startTimer = XbmcThreads::SystemClockMillis();
+  auto start = std::chrono::steady_clock::now();
 
   CFileItem item(strMovie, false);
   if ((item.IsInternetStream() && !URIUtils::IsOnLAN(item.GetDynPath()))
@@ -2070,7 +2071,10 @@ void CUtil::ScanForExternalSubtitles(const std::string& strMovie, std::vector<st
       }
     }
   }
-  CLog::Log(LOGDEBUG, "%s: END (total time: %i ms)", __FUNCTION__, (int)(XbmcThreads::SystemClockMillis() - startTimer));
+
+  auto end = std::chrono::steady_clock::now();
+  auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+  CLog::Log(LOGDEBUG, "{}: END (total time: {} ms)", __FUNCTION__, duration.count());
 }
 
 ExternalStreamInfo CUtil::GetExternalStreamDetailsFromFilename(const std::string& videoPath, const std::string& associatedFile)

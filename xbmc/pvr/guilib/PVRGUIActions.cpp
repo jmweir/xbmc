@@ -39,7 +39,7 @@
 #include "pvr/addons/PVRClientMenuHooks.h"
 #include "pvr/addons/PVRClients.h"
 #include "pvr/channels/PVRChannel.h"
-#include "pvr/channels/PVRChannelGroup.h"
+#include "pvr/channels/PVRChannelGroupMember.h"
 #include "pvr/channels/PVRChannelGroups.h"
 #include "pvr/channels/PVRChannelGroupsContainer.h"
 #include "pvr/dialogs/GUIDialogPVRChannelGuide.h"
@@ -1019,7 +1019,8 @@ namespace PVR
     }
 
     std::shared_ptr<CPVRRecording> origRecording(new CPVRRecording);
-    origRecording->Update(*recording);
+    origRecording->Update(*recording,
+                          *CServiceBroker::GetPVRManager().GetClient(recording->m_iClientId));
 
     if (!ShowRecordingSettings(recording))
       return false;
@@ -1457,10 +1458,12 @@ namespace PVR
       if (channelGroup)
       {
         // try to start playback of first channel in this group
-        const std::vector<std::shared_ptr<PVRChannelGroupMember>> groupMembers = channelGroup->GetMembers();
+        const std::vector<std::shared_ptr<CPVRChannelGroupMember>> groupMembers =
+            channelGroup->GetMembers();
         if (!groupMembers.empty())
         {
-          return SwitchToChannel(std::make_shared<CFileItem>((*groupMembers.begin())->channel), true);
+          return SwitchToChannel(std::make_shared<CFileItem>((*groupMembers.begin())->Channel()),
+                                 true);
         }
       }
     }
@@ -1501,7 +1504,7 @@ namespace PVR
       if (channels.empty())
         return false;
 
-      channel = channels.front()->channel;
+      channel = channels.front()->Channel();
     }
 
     CLog::Log(LOGINFO, "PVR is starting playback of channel '{}'", channel->ChannelName());
@@ -1633,16 +1636,18 @@ namespace PVR
     /* start the channel scan */
     CLog::LogFC(LOGDEBUG, LOGPVR, "Starting to scan for channels on client {}",
                 scanClient->GetFriendlyName());
-    long perfCnt = XbmcThreads::SystemClockMillis();
+    auto start = std::chrono::steady_clock::now();
 
     /* do the scan */
     if (scanClient->StartChannelScan() != PVR_ERROR_NO_ERROR)
       HELPERS::ShowOKDialogText(CVariant{257},    // "Error"
                                     CVariant{19193}); // "The channel scan can't be started. Check the log for more information about this message."
 
-    CLog::LogFC(LOGDEBUG, LOGPVR, "Channel scan finished after {}.{} seconds",
-                (XbmcThreads::SystemClockMillis() - perfCnt) / 1000,
-                (XbmcThreads::SystemClockMillis() - perfCnt) % 1000);
+    auto end = std::chrono::steady_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+
+    CLog::LogFC(LOGDEBUG, LOGPVR, "Channel scan finished after {} ms", duration.count());
+
     m_bChannelScanRunning = false;
     return true;
   }
@@ -2217,10 +2222,21 @@ namespace PVR
   {
     if (m_settings.GetBoolValue(CSettings::SETTING_PVRMANAGER_PRESELECTPLAYINGCHANNEL))
     {
+      CPVRManager& mgr = CServiceBroker::GetPVRManager();
+
       // if preselect playing channel is activated, return the path of the playing channel, if any.
-      const std::shared_ptr<CPVRChannel> playingChannel = CServiceBroker::GetPVRManager().PlaybackState()->GetPlayingChannel();
+      const std::shared_ptr<CPVRChannel> playingChannel = mgr.PlaybackState()->GetPlayingChannel();
       if (playingChannel && playingChannel->IsRadio() == bRadio)
         return playingChannel->Path();
+
+      const std::shared_ptr<CPVREpgInfoTag> playingTag = mgr.PlaybackState()->GetPlayingEpgTag();
+      if (playingTag && playingTag->IsRadio() == bRadio)
+      {
+        const std::shared_ptr<CPVRChannel> channel =
+            mgr.ChannelGroups()->GetChannelForEpgTag(playingTag);
+        if (channel)
+          return channel->Path();
+      }
     }
 
     CSingleLock lock(m_critSection);
@@ -2323,9 +2339,15 @@ namespace PVR
 
   void CPVRGUIActions::OnPlaybackStarted(const CFileItemPtr& item)
   {
-    if (item->HasPVRChannelInfoTag())
+    std::shared_ptr<CPVRChannel> channel = item->GetPVRChannelInfoTag();
+    if (!channel && item->HasEPGInfoTag())
     {
-      const std::shared_ptr<CPVRChannel> channel = item->GetPVRChannelInfoTag();
+      channel = CServiceBroker::GetPVRManager().ChannelGroups()->GetChannelForEpgTag(
+          item->GetEPGInfoTag());
+    }
+
+    if (channel)
+    {
       m_channelNavigator.SetPlayingChannel(channel);
       SetSelectedItemPath(channel->IsRadio(), channel->Path());
     }
@@ -2333,7 +2355,7 @@ namespace PVR
 
   void CPVRGUIActions::OnPlaybackStopped(const CFileItemPtr& item)
   {
-    if (item->HasPVRChannelInfoTag())
+    if (item->HasPVRChannelInfoTag() || item->HasEPGInfoTag())
     {
       m_channelNavigator.ClearPlayingChannel();
     }

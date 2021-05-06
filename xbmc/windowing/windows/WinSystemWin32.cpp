@@ -34,6 +34,7 @@
 
 #include "platform/win32/CharsetConverter.h"
 #include "platform/win32/input/IRServerSuite.h"
+#include "platform/win32/network/WSDiscoveryWin32.h"
 
 #include <algorithm>
 
@@ -80,10 +81,14 @@ CWinSystemWin32::CWinSystemWin32()
     m_irss->Initialize();
   }
   m_dpms = std::make_shared<CWin32DPMSSupport>();
+
+  CWSDiscoverySupport::Get()->Initialize();
 }
 
 CWinSystemWin32::~CWinSystemWin32()
 {
+  CWSDiscoverySupport::Get()->Terminate();
+
   if (m_hIcon)
   {
     DestroyIcon(m_hIcon);
@@ -219,7 +224,7 @@ bool CWinSystemWin32::CreateNewWindow(const std::string& name, bool fullScreen, 
   m_trayIcon.cbSize = sizeof(m_trayIcon);
   m_trayIcon.hWnd = m_hWnd;
   m_trayIcon.hIcon = m_hIcon;
-  wcsncpy(m_trayIcon.szTip, nameW.c_str(), sizeof(m_trayIcon.szTip));
+  wcsncpy(m_trayIcon.szTip, nameW.c_str(), sizeof(m_trayIcon.szTip) / sizeof(WCHAR));
   m_trayIcon.uCallbackMessage = TRAY_ICON_NOTIFY;
   m_trayIcon.uFlags = NIF_ICON | NIF_TIP | NIF_MESSAGE;  
 
