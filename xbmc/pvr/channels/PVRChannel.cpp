@@ -67,7 +67,8 @@ CPVRChannel::CPVRChannel(const PVR_CHANNEL& channel, unsigned int iClientId)
     m_iClientEncryptionSystem(channel.iEncryptionSystem)
 {
   if (m_strChannelName.empty())
-    m_strChannelName = StringUtils::Format("%s %d", g_localizeStrings.Get(19029).c_str(), m_iUniqueId);
+    m_strChannelName =
+        StringUtils::Format("{} {}", g_localizeStrings.Get(19029).c_str(), m_iUniqueId);
 
   UpdateEncryptionName();
 }
@@ -88,8 +89,6 @@ void CPVRChannel::Serialize(CVariant& value) const
   value["uniqueid"]  = m_iUniqueId;
   CDateTime lastPlayed(m_iLastWatched);
   value["lastplayed"] = lastPlayed.IsValid() ? lastPlayed.GetAsDBDate() : "";
-  value["channelnumber"] = m_channelNumber.GetChannelNumber();
-  value["subchannelnumber"] = m_channelNumber.GetSubChannelNumber();
 
   std::shared_ptr<CPVREpgInfoTag> epg = GetEPGNow();
   if (epg)
@@ -245,12 +244,6 @@ bool CPVRChannel::SetChannelID(int iChannelId)
   return false;
 }
 
-const CPVRChannelNumber& CPVRChannel::ChannelNumber() const
-{
-  CSingleLock lock(m_critSection);
-  return m_channelNumber;
-}
-
 bool CPVRChannel::SetHidden(bool bIsHidden)
 {
   CSingleLock lock(m_critSection);
@@ -330,7 +323,7 @@ bool CPVRChannel::SetIconPath(const std::string& strIconPath, bool bIsUserSetIco
   CSingleLock lock(m_critSection);
   if (m_strIconPath != strIconPath)
   {
-    m_strIconPath = StringUtils::Format("%s", strIconPath.c_str());
+    m_strIconPath = StringUtils::Format("{}", strIconPath.c_str());
 
     m_bChanged = true;
     m_bIsUserSetIcon = bIsUserSetIcon && !m_strIconPath.empty();
@@ -519,7 +512,7 @@ std::string CPVRChannel::GetEncryptionName(int iCaid)
     strName = "Verimatrix";
 
   if (iCaid >= 0)
-    strName += StringUtils::Format(" (%04X)", iCaid);
+    strName += StringUtils::Format(" ({:04X})", iCaid);
 
   return strName;
 }
@@ -645,7 +638,7 @@ bool CPVRChannel::SetEPGScraper(const std::string& strScraper)
   {
     bool bCleanEPG = !m_strEPGScraper.empty() || strScraper.empty();
 
-    m_strEPGScraper = StringUtils::Format("%s", strScraper.c_str());
+    m_strEPGScraper = StringUtils::Format("{}", strScraper.c_str());
     m_bChanged = true;
 
     /* clear the previous EPG entries if needed */
@@ -658,32 +651,11 @@ bool CPVRChannel::SetEPGScraper(const std::string& strScraper)
   return false;
 }
 
-void CPVRChannel::SetChannelNumber(const CPVRChannelNumber& channelNumber)
-{
-  CSingleLock lock(m_critSection);
-  m_channelNumber = channelNumber;
-}
-
-void CPVRChannel::SetClientChannelNumber(const CPVRChannelNumber& clientChannelNumber)
-{
-  CSingleLock lock(m_critSection);
-  m_clientChannelNumber = clientChannelNumber;
-}
-
 void CPVRChannel::ToSortable(SortItem& sortable, Field field) const
 {
   CSingleLock lock(m_critSection);
   if (field == FieldChannelName)
     sortable[FieldChannelName] = m_strChannelName;
-  else if (field == FieldChannelNumber)
-    sortable[FieldChannelNumber] = m_channelNumber.SortableChannelNumber();
-  else if (field == FieldClientChannelOrder)
-  {
-    if (m_iOrder)
-      sortable[FieldClientChannelOrder] = m_iOrder;
-    else
-      sortable[FieldClientChannelOrder] = m_clientChannelNumber.SortableChannelNumber();
-  }
   else if (field == FieldLastPlayed)
   {
     const CDateTime lastWatched(m_iLastWatched);
@@ -832,10 +804,4 @@ bool CPVRChannel::CanRecord() const
 {
   const std::shared_ptr<CPVRClient> client = CServiceBroker::GetPVRManager().GetClient(m_iClientId);
   return client && client->GetClientCapabilities().SupportsRecordings();
-}
-
-void CPVRChannel::SetClientOrder(int iOrder)
-{
-  CSingleLock lock(m_critSection);
-  m_iOrder = iOrder;
 }

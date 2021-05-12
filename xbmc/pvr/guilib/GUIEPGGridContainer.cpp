@@ -19,6 +19,7 @@
 #include "messaging/ApplicationMessenger.h"
 #include "pvr/PVRManager.h"
 #include "pvr/channels/PVRChannel.h"
+#include "pvr/channels/PVRChannelGroupMember.h"
 #include "pvr/epg/EpgInfoTag.h"
 #include "pvr/guilib/GUIEPGGridContainerModel.h"
 #include "utils/MathUtils.h"
@@ -1124,7 +1125,7 @@ bool CGUIEPGGridContainer::SetChannel(const CPVRChannelNumber& channelNumber)
   for (int iIndex = 0; iIndex < m_gridModel->ChannelItemsSize(); iIndex++)
   {
     const CPVRChannelNumber& number =
-        m_gridModel->GetChannelItem(iIndex)->GetPVRChannelInfoTag()->ChannelNumber();
+        m_gridModel->GetChannelItem(iIndex)->GetPVRChannelGroupMemberInfoTag()->ChannelNumber();
     if (number == channelNumber)
     {
       GoToChannel(iIndex);
@@ -1411,21 +1412,23 @@ std::string CGUIEPGGridContainer::GetLabel(int info) const
   {
   case CONTAINER_NUM_PAGES:
     if (m_channelsPerPage > 0)
-      label = StringUtils::Format("%u", (m_gridModel->ChannelItemsSize() + m_channelsPerPage - 1) / m_channelsPerPage);
+      label = StringUtils::Format("{}", (m_gridModel->ChannelItemsSize() + m_channelsPerPage - 1) /
+                                            m_channelsPerPage);
     else
-      label = StringUtils::Format("%u", 0);
+      label = StringUtils::Format("{}", 0);
     break;
   case CONTAINER_CURRENT_PAGE:
     if (m_channelsPerPage > 0)
-      label = StringUtils::Format("%u", 1 + (m_channelCursor + m_channelOffset) / m_channelsPerPage);
+      label =
+          StringUtils::Format("{}", 1 + (m_channelCursor + m_channelOffset) / m_channelsPerPage);
     else
-      label = StringUtils::Format("%u", 1);
+      label = StringUtils::Format("{}", 1);
     break;
   case CONTAINER_POSITION:
-    label = StringUtils::Format("%i", 1 + m_channelCursor + m_channelOffset);
+    label = StringUtils::Format("{}", 1 + m_channelCursor + m_channelOffset);
     break;
   case CONTAINER_NUM_ITEMS:
-    label = StringUtils::Format("%u", m_gridModel->ChannelItemsSize());
+    label = StringUtils::Format("{}", m_gridModel->ChannelItemsSize());
     break;
   default:
       break;

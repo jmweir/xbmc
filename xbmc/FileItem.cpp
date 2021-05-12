@@ -35,6 +35,7 @@
 #include "playlists/PlayListFactory.h"
 #include "pvr/PVRManager.h"
 #include "pvr/channels/PVRChannel.h"
+#include "pvr/channels/PVRChannelGroupMember.h"
 #include "pvr/channels/PVRChannelGroupsContainer.h"
 #include "pvr/epg/EpgInfoTag.h"
 #include "pvr/recordings/PVRRecording.h"
@@ -200,6 +201,12 @@ CFileItem::CFileItem(const std::shared_ptr<CPVRChannel>& channel)
   FillInMimeType(false);
 }
 
+CFileItem::CFileItem(const std::shared_ptr<CPVRChannelGroupMember>& channelGroupMember)
+  : CFileItem(channelGroupMember->Channel())
+{
+  m_pvrChannelGroupMemberInfoTag = channelGroupMember;
+}
+
 CFileItem::CFileItem(const std::shared_ptr<CPVRRecording>& record)
 {
   Initialize();
@@ -330,7 +337,7 @@ CFileItem::CFileItem(const CMediaSource& share)
     URIUtils::AddSlashAtEnd(m_strPath);
   std::string label = share.strName;
   if (!share.strStatus.empty())
-    label = StringUtils::Format("%s (%s)", share.strName.c_str(), share.strStatus.c_str());
+    label = StringUtils::Format("{} ({})", share.strName.c_str(), share.strStatus.c_str());
   SetLabel(label);
   m_iLockMode = share.m_iLockMode;
   m_strLockCode = share.m_strLockCode;
@@ -443,6 +450,7 @@ CFileItem& CFileItem::operator=(const CFileItem& item)
 
   m_epgInfoTag = item.m_epgInfoTag;
   m_pvrChannelInfoTag = item.m_pvrChannelInfoTag;
+  m_pvrChannelGroupMemberInfoTag = item.m_pvrChannelGroupMemberInfoTag;
   m_pvrRecordingInfoTag = item.m_pvrRecordingInfoTag;
   m_pvrTimerInfoTag = item.m_pvrTimerInfoTag;
   m_addonInfo = item.m_addonInfo;
@@ -516,6 +524,7 @@ void CFileItem::Reset()
   m_videoInfoTag=NULL;
   m_epgInfoTag.reset();
   m_pvrChannelInfoTag.reset();
+  m_pvrChannelGroupMemberInfoTag.reset();
   m_pvrRecordingInfoTag.reset();
   m_pvrTimerInfoTag.reset();
   delete m_pictureInfoTag;
@@ -720,6 +729,9 @@ void CFileItem::ToSortable(SortItem &sortable, Field field) const
 
   if (HasPVRChannelInfoTag())
     GetPVRChannelInfoTag()->ToSortable(sortable, field);
+
+  if (HasPVRChannelGroupMemberInfoTag())
+    GetPVRChannelGroupMemberInfoTag()->ToSortable(sortable, field);
 
   if (HasAddonInfo())
   {
@@ -1810,7 +1822,7 @@ void CFileItem::SetFromSong(const CSong &song)
   if (song.idSong > 0)
   {
     std::string strExt = URIUtils::GetExtension(song.strFileName);
-    m_strPath = StringUtils::Format("musicdb://songs/%li%s", song.idSong, strExt.c_str());
+    m_strPath = StringUtils::Format("musicdb://songs/{}{}", song.idSong, strExt.c_str());
   }
   else if (!song.strFileName.empty())
     m_strPath = song.strFileName;
@@ -3068,7 +3080,7 @@ void CFileItemList::RemoveDiscCache(const std::string& cacheFile) const
 
 void CFileItemList::RemoveDiscCacheCRC(const std::string& crc) const
 {
-  std::string cachefile = StringUtils::Format("special://temp/archive_cache/%s.fi", crc);
+  std::string cachefile = StringUtils::Format("special://temp/archive_cache/{}.fi", crc);
   RemoveDiscCache(cachefile);
 }
 
@@ -3081,21 +3093,21 @@ std::string CFileItemList::GetDiscFileCache(int windowID) const
 
   std::string cacheFile;
   if (IsCDDA() || IsOnDVD())
-    return StringUtils::Format("special://temp/archive_cache/r-%08x.fi", crc);
+    return StringUtils::Format("special://temp/archive_cache/r-{:08x}.fi", crc);
 
   if (IsMusicDb())
-    return StringUtils::Format("special://temp/archive_cache/mdb-%08x.fi", crc);
+    return StringUtils::Format("special://temp/archive_cache/mdb-{:08x}.fi", crc);
 
   if (IsVideoDb())
-    return StringUtils::Format("special://temp/archive_cache/vdb-%08x.fi", crc);
+    return StringUtils::Format("special://temp/archive_cache/vdb-{:08x}.fi", crc);
 
   if (IsSmartPlayList())
-    return StringUtils::Format("special://temp/archive_cache/sp-%08x.fi", crc);
+    return StringUtils::Format("special://temp/archive_cache/sp-{:08x}.fi", crc);
 
   if (windowID)
-    return StringUtils::Format("special://temp/archive_cache/%i-%08x.fi", windowID, crc);
+    return StringUtils::Format("special://temp/archive_cache/{}-{:08x}.fi", windowID, crc);
 
-  return StringUtils::Format("special://temp/archive_cache/%08x.fi", crc);
+  return StringUtils::Format("special://temp/archive_cache/{:08x}.fi", crc);
 }
 
 bool CFileItemList::AlwaysCache() const
@@ -3546,7 +3558,7 @@ bool CFileItem::LoadMusicTag()
       std::string strText = g_localizeStrings.Get(554); // "Track"
       if (!strText.empty() && strText[strText.size() - 1] != ' ')
         strText += " ";
-      std::string strTrack = StringUtils::Format((strText + "%i").c_str(), iTrack);
+      std::string strTrack = StringUtils::Format((strText + "{}").c_str(), iTrack);
       GetMusicInfoTag()->SetTitle(strTrack);
       GetMusicInfoTag()->SetLoaded(true);
       return true;
